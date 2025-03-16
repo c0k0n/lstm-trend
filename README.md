@@ -1,6 +1,6 @@
-# StreamlitStockForecast
+# StockForecast-Streamlit
 
-Welcome to the StreamlitStockForecast repository! This repository contains a Streamlit web application for stock price prediction using an LSTM (Long Short-Term Memory) model. The application allows users to explore historical stock data, visualize various stock metrics, and predict future stock prices.
+Welcome to the StockForecast-Streamlit repository! This repository contains a Streamlit web application for stock price prediction using an LSTM (Long Short-Term Memory) model. The application allows users to explore historical stock data, visualize various stock metrics, and predict future stock prices.
 
 ## Features
 
@@ -12,12 +12,12 @@ Welcome to the StreamlitStockForecast repository! This repository contains a Str
 
 ## Installation
 
-To run the StreamlitStockForecast application, you need to have Python installed. Follow the steps below to set up the environment and run the application:
+To run the StockForecast-Streamlit application, you need to have Python installed. Follow the steps below to set up the environment and run the application:
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/c0k0n/StreamlitStockForecast.git
-   cd StreamlitStockForecast
+   git clone https://github.com/c0k0n/StockForecast-Streamlit.git
+   cd StockForecast-Streamlit
    ```
 
 2. Install the required dependencies:
