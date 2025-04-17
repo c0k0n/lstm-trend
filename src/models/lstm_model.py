@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
-from tensorflow.keras.models import Sequential, load_model, Model # Import Model
+from tensorflow.keras.models import  Model # Import Model
 from tensorflow.keras.layers import LSTM, Dense, Dropout, Input # Import Input
-from tensorflow.keras.callbacks import Callback, EarlyStopping, ModelCheckpoint # Added more callbacks
+from tensorflow.keras.callbacks import Callback, EarlyStopping # Added more callbacks
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error, r2_score
 from typing import Tuple, List, Any, Optional # Added Optional
