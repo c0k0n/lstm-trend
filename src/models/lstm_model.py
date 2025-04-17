@@ -1,89 +1,163 @@
-import streamlit as st
 import numpy as np
 import pandas as pd
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense, Dropout
-from tensorflow.keras.metrics import MeanSquaredError, MeanAbsoluteError
+from tensorflow.keras.models import Sequential, load_model, Model # Import Model
+from tensorflow.keras.layers import LSTM, Dense, Dropout, Input # Import Input
+from tensorflow.keras.callbacks import Callback, EarlyStopping, ModelCheckpoint # Added more callbacks
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error, r2_score
-from typing import Tuple
-import logging
+from typing import Tuple, List, Any, Optional # Added Optional
 
-# Assuming CustomProgressBarCallback is in the same directory or properly imported
-from .callbacks import CustomProgressBarCallback
+# Type alias for Keras model and history
+KerasModel = Any
+History = Any
 
-def create_lstm_model(input_shape: Tuple[int, int]) -> Sequential:
-    """Creates the LSTM model architecture."""
-    model = Sequential([
-        LSTM(units=128, return_sequences=True, input_shape=input_shape),
-        Dropout(0.2),
-        LSTM(units=128, return_sequences=True),
-        Dropout(0.2),
-        LSTM(units=128),
-        Dropout(0.2),
-        Dense(units=1)
-    ])
-    model.compile(optimizer='adam', loss='mean_squared_error', metrics=[MeanAbsoluteError(), MeanSquaredError()])
-    logging.info("LSTM Model compiled successfully.")
-    # model.summary(print_fn=logging.info) # Log model summary if needed
+def create_lstm_model(input_shape: Tuple[int, int], units: int = 50, dropout_rate: float = 0.2) -> KerasModel:
+    """
+    Creates an LSTM model using the Keras Functional API.
+
+    Args:
+        input_shape (Tuple[int, int]): Shape of the input data (sequence_length, num_features).
+        units (int): Number of LSTM units in the main layer.
+        dropout_rate (float): Dropout rate for regularization.
+
+    Returns:
+        KerasModel: A compiled Keras Functional API model.
+    """
+    # Define input layer explicitly
+    inputs = Input(shape=input_shape)
+
+    # Build the model layers functionally
+    x = LSTM(units=units, return_sequences=True)(inputs)
+    x = Dropout(dropout_rate)(x)
+    x = LSTM(units=units // 2, return_sequences=False)(x)
+    x = Dropout(dropout_rate)(x)
+    x = Dense(units=25, activation='relu')(x) # Added relu activation
+    outputs = Dense(units=1)(x) # Output layer
+
+    # Create the model instance
+    model = Model(inputs=inputs, outputs=outputs)
+
+    # Compile
+    model.compile(optimizer='adam', loss='mean_absolute_error')
+    # print(model.summary()) # Optional: print summary
     return model
 
+def train_model(
+    model: KerasModel,
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    epochs: int,
+    batch_size: int,
+    validation_split: float = 0.1,
+    callbacks: Optional[List[Callback]] = None
+) -> History:
+    """
+    Trains the LSTM model.
 
-def train_model(model: Sequential, X_train: np.ndarray, y_train: np.ndarray, X_test: np.ndarray, y_test: np.ndarray, epochs: int, batch_size: int) -> tf.keras.callbacks.History:
-    """Trains the LSTM model and displays progress in Streamlit."""
-    st.subheader("LSTM Model Training Progress")
-    progress_bar = st.progress(0)
-    custom_callback = CustomProgressBarCallback(progress_bar, epochs)
+    Args:
+        model (KerasModel): The compiled Keras model.
+        X_train (np.ndarray): Training input sequences.
+        y_train (np.ndarray): Training target values.
+        epochs (int): Number of training epochs.
+        batch_size (int): Training batch size.
+        validation_split (float): Fraction of training data to use for validation.
+        callbacks (Optional[List[Callback]]): List of Keras callbacks to use during training.
 
-    with st.spinner("Training model... This may take a while."):
-        history = model.fit(
-            X_train, y_train,
-            epochs=epochs,
-            batch_size=batch_size,
-            validation_data=(X_test, y_test),
-            callbacks=[custom_callback],
-            verbose=0 # Set verbose to 0 to avoid duplicate output
-        )
-    st.success("Model training finished!")
+    Returns:
+        History: Keras History object containing training metrics.
+    """
+    # Add common useful callbacks if not provided
+    if callbacks is None:
+        callbacks = []
+
+    # Early stopping to prevent overfitting
+    if not any(isinstance(cb, EarlyStopping) for cb in callbacks):
+         callbacks.append(EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True))
+
+    # Optional: Checkpoint to save the best model
+    # if not any(isinstance(cb, ModelCheckpoint) for cb in callbacks):
+    #     callbacks.append(ModelCheckpoint('best_lstm_model.keras', save_best_only=True, monitor='val_loss'))
+
+    history = model.fit(
+        X_train,
+        y_train,
+        epochs=epochs,
+        batch_size=batch_size,
+        validation_split=validation_split,
+        callbacks=callbacks,
+        verbose=0 # Set verbose=0 to rely on custom Streamlit callback for progress
+    )
     return history
 
+def evaluate_model(
+    model: KerasModel,
+    X_test: np.ndarray,
+    y_test: np.ndarray, # Note: y_test is expected to be SCALED here
+    scaler: MinMaxScaler # Scaler is needed to inverse transform
+) -> Tuple[float, float]:
+    """
+    Evaluates the trained LSTM model on the test set using original scale values.
 
-def evaluate_model(model: Sequential, X_test: np.ndarray, y_test: np.ndarray, scaler: MinMaxScaler) -> Tuple[float, float, np.ndarray, np.ndarray]:
-    """Evaluates the model on the test set and returns metrics and predictions."""
-    logging.info("Evaluating model...")
+    Args:
+        model (KerasModel): The trained Keras model.
+        X_test (np.ndarray): Test input sequences.
+        y_test (np.ndarray): True test target values (scaled).
+        scaler (MinMaxScaler): The scaler used for preprocessing 'Close' prices.
+
+    Returns:
+        Tuple[float, float]: Mean Squared Error (MSE) and R-squared (R2) score,
+                             calculated on the original price scale.
+    """
+    # 1. Predict on the test set (predictions are scaled)
     predictions_scaled = model.predict(X_test)
-    predictions = scaler.inverse_transform(predictions_scaled)
-    # y_test needs to be 2D for inverse_transform if it's not already
-    y_test_reshaped = y_test.reshape(-1, 1)
-    y_test_original = scaler.inverse_transform(y_test_reshaped)
 
-    mse = mean_squared_error(y_test_original, predictions)
-    r2 = r2_score(y_test_original, predictions)
+    # 2. Inverse transform predictions and actual test values to original scale
+    predictions_original = scaler.inverse_transform(predictions_scaled)
+    # Reshape y_test if it's flat (e.g., (n,)) to (n, 1) for inverse_transform
+    if y_test.ndim == 1:
+        y_test = y_test.reshape(-1, 1)
+    y_test_original = scaler.inverse_transform(y_test)
 
-    logging.info(f'Test Mean Squared Error: {mse}')
-    logging.info(f'Test R2 Score: {r2}')
+    # 3. Calculate metrics on the original scale
+    mse = mean_squared_error(y_test_original, predictions_original)
+    r2 = r2_score(y_test_original, predictions_original)
 
-    return mse, r2, y_test_original, predictions
+    return mse, r2
 
+def make_future_predictions(
+    model: KerasModel,
+    last_sequence: np.ndarray, # Should be shape (1, sequence_length, 1)
+    future_steps: int
+) -> np.ndarray:
+    """
+    Predicts future values step-by-step using the last known sequence.
 
-def make_future_predictions(model: Sequential, last_sequence_scaled: np.ndarray, scaler: MinMaxScaler, future_steps: int, sequence_length: int) -> np.ndarray:
-    """Predicts future stock prices."""
-    logging.info(f"Making {future_steps} future predictions...")
+    Args:
+        model (KerasModel): The trained Keras model.
+        last_sequence (np.ndarray): The last available sequence from the data,
+                                    already scaled and correctly shaped (1, seq_len, 1).
+        future_steps (int): The number of future time steps to predict.
+
+    Returns:
+        np.ndarray: An array of predicted values for the future steps (scaled).
+                    Shape will be (future_steps, 1).
+    """
     future_predictions_scaled = []
-    current_sequence = last_sequence_scaled.copy() # Ensure it's a copy
+    current_sequence = last_sequence.copy() # Use a copy to avoid modifying the original
 
     for _ in range(future_steps):
-        # Reshape current_sequence for prediction: [1, sequence_length, 1]
-        current_sequence_reshaped = current_sequence.reshape(1, sequence_length, 1)
         # Predict the next step
-        next_prediction_scaled = model.predict(current_sequence_reshaped)[0, 0]
-        future_predictions_scaled.append(next_prediction_scaled)
-        # Update the sequence: remove the first element, append the prediction
-        # Ensure the prediction is treated as a single element array for np.append
-        current_sequence = np.append(current_sequence[1:], [next_prediction_scaled])
+        next_pred_scaled = model.predict(current_sequence)[0, 0] # Get scalar prediction
 
-    # Inverse transform the predictions
-    future_predictions = scaler.inverse_transform(np.array(future_predictions_scaled).reshape(-1, 1))
-    logging.info("Future predictions generated.")
-    return future_predictions
+        # Append the prediction
+        future_predictions_scaled.append(next_pred_scaled)
+
+        # Update the sequence: remove the first element, append the prediction
+        # Reshape prediction to (1, 1) before appending
+        next_pred_reshaped = np.array([[next_pred_scaled]]) # Shape (1, 1)
+        # Append requires compatible shape, need (1, 1, 1) to match feature dim
+        next_pred_for_seq = next_pred_reshaped.reshape(1, 1, 1)
+
+        current_sequence = np.append(current_sequence[:, 1:, :], next_pred_for_seq, axis=1)
+
+    return np.array(future_predictions_scaled).reshape(-1, 1) # Return as (future_steps, 1)

@@ -1,184 +1,387 @@
 import streamlit as st
-import numpy as np
 import pandas as pd
-from datetime import date
-import logging
+import numpy as np
+import datetime
+from typing import Optional, Tuple, Any # Added Any for history object
 
-# Import refactored components
-from src.utils.data_loader import download_stock_data
-# Update import for the renamed plotting function
-from src.utils.plotting import (
-    plot_close_price, plot_volume, plot_candlestick, # Changed here
+# Import constants
+from .constants import (
+    DEFAULT_SYMBOL, DEFAULT_START_DATE, DEFAULT_END_DATE,
+    DEFAULT_SEQUENCE_LENGTH, DEFAULT_FUTURE_STEPS,
+    DEFAULT_EPOCHS, DEFAULT_BATCH_SIZE, TRAIN_TEST_SPLIT_RATIO,
+    LSTM_UNITS, VALIDATION_SPLIT
+)
+# Import utility functions
+from .utils.data_loader import download_stock_data
+from .utils.preprocessing import scale_data, create_sequences, inverse_scale_data
+from .utils.plotting import (
+    plot_raw_data, plot_candlestick, plot_volume,
     plot_evaluation_metrics, plot_predictions
 )
-from src.utils.preprocessing import scale_data, create_sequences
-from src.models.lstm_model import (
-    create_lstm_model, train_model, evaluate_model, make_future_predictions
-)
-from sklearn.model_selection import train_test_split
+# Import model functions
+from .models.lstm_model import create_lstm_model, train_model, evaluate_model, make_future_predictions
+from .models.callbacks import CustomProgressBarCallback
 
-# Setup basic logging (optional here if set elsewhere, but good practice)
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# Type alias for Keras History object (replace with actual type if known)
+History = Any
 
-def run_app():
-    # --- Page Config ---
-    st.set_page_config(layout="wide", page_title="Stock Price Predictor", page_icon="📈")
+def setup_sidebar() -> Tuple[str, datetime.date, datetime.date, int, int, int, int, bool]:
+    """
+    Sets up the Streamlit sidebar configuration and returns user inputs.
 
-    # --- Title and Description ---
-    st.title("📈 LSTM Stock Price Predictor")
-    st.markdown("""
-        Explore historical stock data and predict future prices using an LSTM (Long Short-Term Memory) neural network.
-        Use the sidebar to select a stock symbol, date range, and configure the prediction model.
-    """)
-    st.divider()
+    Returns:
+        tuple: Contains stock_symbol, start_date, end_date, sequence_length,
+               future_steps, epochs, batch_size, run_button status.
+    """
+    st.sidebar.header("Configuration")
+    stock_symbol = st.sidebar.text_input("Stock Symbol", DEFAULT_SYMBOL).upper()
+    start_date = st.sidebar.date_input("Start Date", DEFAULT_START_DATE)
+    end_date = st.sidebar.date_input("End Date", DEFAULT_END_DATE)
 
-    # --- Sidebar ---
-    with st.sidebar:
-        st.header("⚙️ Configuration")
+    st.sidebar.subheader("Model Parameters")
+    sequence_length = st.sidebar.slider("Lookback Window (Days)", 10, 120, DEFAULT_SEQUENCE_LENGTH, key="seq_len")
+    future_steps = st.sidebar.slider("Prediction Horizon (Days)", 5, 90, DEFAULT_FUTURE_STEPS, key="fut_steps")
+    epochs = st.sidebar.number_input("Epochs", min_value=1, max_value=500, value=DEFAULT_EPOCHS, key="epochs")
+    batch_size = st.sidebar.number_input("Batch Size", min_value=8, max_value=128, value=DEFAULT_BATCH_SIZE, step=8, key="batch_size")
 
-        st.subheader("Data Selection")
-        stock_symbol = st.text_input("Stock Symbol", "GOOG").upper()
-        start_date = st.date_input("Start Date", date(2015, 1, 1))
-        end_date = st.date_input("End Date", date.today()) # Default to today
-        st.info(f"Enter a stock symbol (e.g., AAPL, MSFT, GOOG). Data from [Yahoo Finance](https://finance.yahoo.com/).")
-        st.divider()
+    run_button = st.sidebar.button("🚀 Run Analysis & Prediction", key="run_button")
+    return stock_symbol, start_date, end_date, sequence_length, future_steps, epochs, batch_size, run_button
 
-        st.subheader("Prediction Parameters")
-        sequence_length = st.slider("Lookback Window (Days)", min_value=10, max_value=120, value=60, step=5,
-                                    help="Number of past days' data used to predict the next day.")
-        future_steps = st.slider("Prediction Horizon (Days)", min_value=1, max_value=90, value=30, step=1,
-                                 help="Number of future days to predict.")
-        st.divider()
+def load_and_explore_data(stock_symbol: str, start_date: datetime.date, end_date: datetime.date) -> Optional[pd.DataFrame]:
+    """
+    Loads stock data, validates it, handles potential 'Close' column issues,
+    and displays initial data exploration plots. Returns the original DataFrame structure.
+    """
+    st.header(f"Analysis for {stock_symbol}")
+    if start_date >= end_date:
+        st.error("Error: End date must fall after start date.")
+        return None
 
-        st.subheader("LSTM Model Hyperparameters")
-        epochs = st.number_input("Epochs", min_value=5, max_value=200, value=50, step=5,
-                                 help="Number of training iterations over the entire dataset.")
-        batch_size = st.select_slider("Batch Size", options=[16, 32, 64, 128], value=32,
-                                      help="Number of samples processed before the model is updated.")
-        st.divider()
+    with st.spinner(f"Downloading data for {stock_symbol}..."):
+        data = download_stock_data(stock_symbol, start_date, end_date)
+        if data is None or data.empty:
+            return None
 
-        st.warning("Adjusting parameters will trigger data reloading and model retraining.")
-        run_analysis = st.button("🚀 Run Analysis & Prediction", type="primary")
+        # --- Column Handling ---
+        close_col_data = None
+        volume_col_data = None
+        display_data = data.copy() # Copy for display modification
 
-    # --- Main Content Area ---
-    if not run_analysis:
-        st.info("Adjust the settings in the sidebar and click 'Run Analysis & Prediction' to start.")
-        return # Stop execution if button not pressed
+        if isinstance(data.columns, pd.MultiIndex):
+            # Find the actual column names (e.g., ('Close', ''), ('Volume', ''))
+            close_col_name = next((col for col in data.columns if col[0] == 'Close'), None)
+            volume_col_name = next((col for col in data.columns if col[0] == 'Volume'), None)
+            open_col_name = next((col for col in data.columns if col[0] == 'Open'), None)
+            high_col_name = next((col for col in data.columns if col[0] == 'High'), None)
+            low_col_name = next((col for col in data.columns if col[0] == 'Low'), None)
 
-    # --- Data Loading and Exploration ---
-    st.header(f"📊 Data Exploration for {stock_symbol}")
-    status_placeholder = st.empty()
-    status_placeholder.info(f"Fetching data for {stock_symbol}...")
-    stock_data = download_stock_data(stock_symbol, start_date, end_date)
+            if close_col_name:
+                close_col_data = data[close_col_name]
+                if 'Close' not in data.columns: data['Close'] = close_col_data # Ensure 'Close' exists for later steps
+            else:
+                st.error("Could not find 'Close' price column in the downloaded multi-index data.")
+                return None
 
-    if stock_data.empty:
-        status_placeholder.error("Failed to load data. Please check the stock symbol and date range.")
-        st.stop() # Stop if data loading failed
+            if volume_col_name:
+                volume_col_data = data[volume_col_name]
 
-    status_placeholder.success("Data loaded successfully!")
-    st.dataframe(stock_data.tail(), use_container_width=True)
+            # --- Modified Flattening and Selection ---
+            # Create a mapping from original multi-index tuple to flattened name
+            original_cols = data.columns.values
+            flattened_cols = ['_'.join(filter(None, col)).strip('_') for col in original_cols]
+            flattened_map = {orig: flat for orig, flat in zip(original_cols, flattened_cols)}
 
+            # Assign flattened names to the display copy
+            display_data.columns = flattened_cols
+
+            # Identify which *flattened* names correspond to the standard columns we want to show
+            cols_to_show_flattened = []
+            standard_names_map = {
+                'Open': open_col_name, 'High': high_col_name, 'Low': low_col_name,
+                'Close': close_col_name, 'Volume': volume_col_name
+            }
+            for simple_name, orig_multi_name in standard_names_map.items():
+                if orig_multi_name: # If the original multi-index column existed
+                    flattened_name = flattened_map.get(orig_multi_name)
+                    if flattened_name and flattened_name in display_data.columns: # Check if it exists after flattening
+                        cols_to_show_flattened.append(flattened_name)
+
+            # Select using the identified flattened names
+            if cols_to_show_flattened:
+                display_data = display_data[cols_to_show_flattened]
+            else:
+                st.warning("Could not identify standard columns (Open, High, Low, Close, Volume) after flattening for display.")
+            # --- End Modified Flattening and Selection ---
+
+        else: # Single index
+            if 'Close' in data.columns:
+                close_col_data = data['Close']
+            else:
+                 st.error("Could not find 'Close' price column in the downloaded data.")
+                 return None
+
+            if 'Volume' in data.columns:
+                volume_col_data = data['Volume']
+
+            # Select common columns for display (original names are fine here)
+            cols_to_show = [col for col in ['Open', 'High', 'Low', 'Close', 'Volume'] if col in data.columns]
+            if cols_to_show:
+                display_data = display_data[cols_to_show]
+
+
+        st.success(f"Data downloaded successfully ({len(data)} rows).")
+        # --- End Column Handling ---
+
+    # --- Plotting and Display (remains the same) ---
+    st.subheader("Data Exploration")
     col1, col2 = st.columns(2)
     with col1:
-        # Check if 'Close' column exists before plotting
-        if 'Close' in stock_data.columns:
-            st.plotly_chart(plot_close_price(stock_data), use_container_width=True) # Use renamed function
+        if close_col_data is not None:
+            st.plotly_chart(plot_raw_data(close_col_data), use_container_width=True)
         else:
-            st.warning("Could not plot Close Price: 'Close' column missing.")
-        # Check if 'Volume' column exists before plotting
-        if 'Volume' in stock_data.columns:
-            st.plotly_chart(plot_volume(stock_data), use_container_width=True)
-        else:
-             st.warning("Could not plot Volume: 'Volume' column missing.")
+            st.warning("Could not plot Close Price.")
     with col2:
-        # Check if required columns exist for candlestick
-        if all(col in stock_data.columns for col in ['Open', 'High', 'Low', 'Close']):
-            st.plotly_chart(plot_candlestick(stock_data), use_container_width=True)
+        if volume_col_data is not None:
+            st.plotly_chart(plot_volume(volume_col_data), use_container_width=True)
         else:
-            st.warning("Could not plot Candlestick: Required columns (Open, High, Low, Close) missing.")
+            st.warning("Could not plot Volume.")
 
+    st.plotly_chart(plot_candlestick(data), use_container_width=True)
+    st.dataframe(display_data.tail()) # Display the potentially column-filtered data
 
-    st.divider()
+    # Return the original data structure (with 'Close' potentially added if needed)
+    return data
 
-    # --- Data Preprocessing ---
-    st.header("⚙️ Model Training & Prediction")
+def preprocess_data(data: pd.DataFrame, sequence_length: int) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, Any, np.ndarray]]:
+    """
+    Scales 'Close' price data, creates sequences for LSTM, and splits
+    into training and testing sets.
+
+    Args:
+        data (pd.DataFrame): DataFrame containing stock data with a 'Close' column.
+        sequence_length (int): The lookback window size.
+
+    Returns:
+        Optional[tuple]: Contains X_train, X_test, y_train, y_test, scaler, scaled_data,
+                         or None if an error occurs or not enough data.
+    """
+    st.subheader("Data Preprocessing")
     with st.spinner("Preprocessing data..."):
-        # Set target column directly to 'Close'
-        target_col = 'Close'
-
-        # Ensure the target column 'Close' exists before proceeding
-        if target_col not in stock_data.columns:
-            st.error(f"Target column '{target_col}' not found in the downloaded data. Cannot proceed with model training.")
-            st.stop()
-
-        # scale_data now defaults to 'Close', but passing explicitly is fine too
-        data_scaled, scaler = scale_data(stock_data, target_col)
-        X, y = create_sequences(data_scaled, sequence_length)
-
-        if len(X) == 0:
-            st.error(f"Not enough data ({len(stock_data)} days) to create sequences with lookback {sequence_length}. Please select a longer date range or shorter lookback.")
-            st.stop()
-
-        # Split data
-        test_size = 0.2
-        if len(X) * test_size < 1: # Ensure at least one sample in test set
-             st.warning(f"Dataset size is very small ({len(X)} samples). Test split might be empty or too small. Consider a larger date range.")
-             test_size = max(1 / len(X), 0.1) # Adjust test size dynamically or set a minimum
-
-        if len(X) * test_size < batch_size:
-             st.warning(f"Test set size ({int(len(X)*test_size)}) is smaller than batch size ({batch_size}). This might affect validation performance. Consider a larger date range or smaller batch size.")
-
         try:
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, shuffle=False)
-        except ValueError as e:
-            st.error(f"Error during data splitting: {e}. Check data length and test size.")
-            st.stop()
+            close_prices = data['Close'].values.reshape(-1, 1)
+            scaled_data, scaler = scale_data(close_prices)
+            X, y = create_sequences(scaled_data, sequence_length)
 
-        # Reshape for LSTM: [samples, time steps, features]
-        X_train = np.reshape(X_train, (X_train.shape[0], X_train.shape[1], 1))
-        X_test = np.reshape(X_test, (X_test.shape[0], X_test.shape[1], 1))
-        st.write(f"Training data shape: {X_train.shape}")
-        st.write(f"Test data shape: {X_test.shape}")
+            if X is None or len(X) == 0:
+                st.warning(f"Not enough data ({len(scaled_data)} points) to create sequences with lookback {sequence_length}. Try an earlier start date or shorter lookback.")
+                return None
 
-    # --- Model Building & Training ---
-    input_shape = (sequence_length, 1) # (time steps, features)
-    model = create_lstm_model(input_shape)
+            # Split data
+            split_index = int(len(X) * TRAIN_TEST_SPLIT_RATIO)
+            if split_index == 0 or split_index == len(X):
+                 st.warning(f"Train/Test split resulted in an empty set (Train: {split_index}, Test: {len(X)-split_index}). Adjust data range or split ratio.")
+                 return None
 
-    history = train_model(model, X_train, y_train, X_test, y_test, epochs, batch_size)
+            X_train, X_test = X[:split_index], X[split_index:]
+            y_train, y_test = y[:split_index], y[split_index:]
 
-    # --- Model Evaluation ---
-    mse, r2, y_test_original, predictions = evaluate_model(model, X_test, y_test, scaler)
-    plot_evaluation_metrics(history, r2)
-    st.metric(label="Test Set Mean Squared Error (MSE)", value=f"{mse:.4f}")
+            # Reshape for LSTM [samples, time steps, features]
+            X_train = np.reshape(X_train, (X_train.shape[0], X_train.shape[1], 1))
+            X_test = np.reshape(X_test, (X_test.shape[0], X_test.shape[1], 1))
 
-    st.divider()
-
-    # --- Future Predictions ---
-    with st.spinner("Generating future predictions..."):
-        # Get the last sequence from the original scaled data
-        last_sequence_scaled = data_scaled[-sequence_length:]
-        if len(last_sequence_scaled) < sequence_length:
-             st.error("Cannot generate future predictions: Not enough historical data for the initial sequence.")
-             st.stop()
-
-        future_predictions = make_future_predictions(model, last_sequence_scaled, scaler, future_steps, sequence_length)
-
-        # Create future date index
-        last_date = stock_data.index[-1]
-        # Ensure future_dates generation is robust
-        try:
-            future_dates = pd.date_range(start=last_date + pd.Timedelta(days=1), periods=future_steps, freq='B') # Use business days 'B'
+            st.success("Data preprocessed and split.")
+            st.text(f"Training samples: {len(X_train)}, Testing samples: {len(X_test)}")
+            return X_train, X_test, y_train, y_test, scaler, scaled_data # Return scaled_data as well
         except Exception as e:
-            st.error(f"Error generating future dates: {e}")
-            # Fallback or alternative date generation if needed
-            future_dates = pd.to_datetime([last_date + pd.Timedelta(days=i+1) for i in range(future_steps)])
+            st.error(f"An error occurred during preprocessing: {e}")
+            return None
+
+def train_evaluate_model(
+    X_train: np.ndarray, y_train: np.ndarray,
+    X_test: np.ndarray, y_test: np.ndarray,
+    scaler: Any, # Scaler object (e.g., MinMaxScaler)
+    sequence_length: int, epochs: int, batch_size: int
+) -> Optional[Tuple[Any, History]]: # Return type hint for Keras model and history
+    """
+    Trains the LSTM model using the provided data and evaluates its performance
+    on the test set (reporting metrics on the original scale).
+
+    Args:
+        X_train, y_train: Training data and targets.
+        X_test, y_test: Testing data and targets (scaled).
+        scaler: The scaler used for preprocessing.
+        sequence_length (int): Lookback window size.
+        epochs (int): Number of training epochs.
+        batch_size (int): Batch size for training.
+
+    Returns:
+        Optional[tuple]: Contains the trained Keras model and the training History object,
+                         or None if an error occurs.
+    """
+    st.subheader("Model Training & Evaluation")
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+    # Use validation split constant
+    callback = CustomProgressBarCallback(progress_bar, status_text, epochs)
+
+    with st.spinner("Training LSTM model..."):
+        try:
+            model = create_lstm_model(input_shape=(sequence_length, 1), units=LSTM_UNITS)
+            history = train_model(
+                model, X_train, y_train,
+                epochs=epochs, batch_size=batch_size,
+                validation_split=VALIDATION_SPLIT, # Use constant
+                callbacks=[callback]
+            )
+            st.success("Model training complete.")
+        except Exception as e:
+            st.error(f"An error occurred during model training: {e}")
+            # Optionally log the full traceback here for debugging
+            # import traceback
+            # st.error(traceback.format_exc())
+            return None
+
+    with st.spinner("Evaluating model..."):
+        try:
+            # Evaluate on original scale using the scaler
+            mse, r2 = evaluate_model(model, X_test, y_test, scaler)
+            st.metric(label="Test Mean Squared Error (MSE)", value=f"{mse:,.2f}") # Format MSE
+            st.metric(label="Test R-squared (R²)", value=f"{r2:.4f}")
+
+            # Plot training history (loss is typically MAE from model compilation)
+            st.plotly_chart(plot_evaluation_metrics(history, mse, r2), use_container_width=True)
+            return model, history
+        except Exception as e:
+            st.error(f"An error occurred during model evaluation: {e}")
+            # import traceback
+            # st.error(traceback.format_exc())
+            return None
+
+def predict_and_visualize(
+    model: Any, # Keras model
+    data: pd.DataFrame, # Original data with DatetimeIndex
+    scaled_data: np.ndarray, # Full scaled 'Close' price data
+    scaler: Any, # Scaler object
+    sequence_length: int, future_steps: int,
+    X_train: np.ndarray, X_test: np.ndarray # Needed for calculating indices
+) -> None:
+    """
+    Generates predictions on the test set and for future steps,
+    then visualizes the actual vs. predicted prices.
+    """
+    st.subheader("Price Prediction")
+    with st.spinner(f"Generating predictions for the next {future_steps} days..."):
+        try:
+            # 1. Make predictions on the test set
+            test_predictions_scaled = model.predict(X_test)
+            test_predictions = inverse_scale_data(test_predictions_scaled, scaler) # Shape (n, 1)
+
+            # 2. Generate future predictions
+            last_sequence = scaled_data[-sequence_length:].reshape(1, sequence_length, 1)
+            future_predictions_scaled = make_future_predictions(model, last_sequence, future_steps)
+            future_predictions = inverse_scale_data(future_predictions_scaled, scaler) # Shape (m, 1)
+
+            # --- Explicitly Flatten Arrays ---
+            test_predictions_flat = test_predictions.flatten() # Ensure 1D
+            future_predictions_flat = future_predictions.flatten() # Ensure 1D
+            # --- End Flattening ---
 
 
-    # --- Plot Results ---
-    # Get the correct index for the test set from the original data
-    test_index = stock_data.index[-len(y_test_original):]
-    plot_predictions(test_index, y_test_original, predictions, future_dates, future_predictions)
+            # 3. Prepare data and indices for plotting
+            test_actual_start_idx = len(X_train) + sequence_length
+            test_actual_end_idx = test_actual_start_idx + len(X_test)
+            if test_actual_end_idx > len(data.index):
+                 test_actual_end_idx = len(data.index)
 
-# Note: The main execution block is moved to main_runner.py
-# if __name__ == "__main__":
-#     run_app()
+            test_plot_idx = data.index[test_actual_start_idx:test_actual_end_idx]
+
+            last_date = data.index[-1]
+            future_dates = pd.date_range(start=last_date + pd.Timedelta(days=1), periods=future_steps, freq='B')
+
+            # --- Get actual test values and FLATTEN ---
+            actual_test_values = data['Close'].iloc[test_actual_start_idx:test_actual_end_idx].values
+            actual_test_values_flat = actual_test_values.flatten() # Flatten here!
+            # --- End Flattening ---
+
+            # Create DataFrames for plotting using the flattened arrays
+            # Ensure index length matches flattened actual values length
+            actual_test_df = pd.DataFrame({'Actual': actual_test_values_flat}, index=test_plot_idx[:len(actual_test_values_flat)])
+
+            # Ensure index length matches flattened prediction length
+            predicted_test_df = pd.DataFrame({'Predicted': test_predictions_flat}, index=test_plot_idx[:len(test_predictions_flat)])
+
+            future_df = pd.DataFrame({'Future': future_predictions_flat}, index=future_dates[:len(future_predictions_flat)]) # Match index length
+
+            st.success("Predictions generated.")
+
+        except Exception as e:
+            st.error(f"An error occurred during prediction: {e}")
+            import traceback
+            st.error(traceback.format_exc()) # Show full traceback in Streamlit for debugging
+            st.stop()
+
+    # 4. Visualize Predictions (This part should be okay now)
+    try:
+        st.plotly_chart(
+            plot_predictions(
+                actual_data=data['Close'],
+                actual_test_df=actual_test_df,
+                predicted_test_df=predicted_test_df,
+                future_df=future_df,
+                sequence_length=sequence_length
+            ),
+            use_container_width=True
+        )
+        st.subheader(f"Future Predicted Prices (Next {future_steps} Business Days)")
+        st.dataframe(future_df)
+    except Exception as e:
+        st.error(f"An error occurred during plotting predictions: {e}")
+        import traceback
+        st.error(traceback.format_exc()) # Show full traceback
+
+def run_app():
+    """Main function to run the Streamlit application."""
+    st.set_page_config(layout="wide", page_title="LSTM Stock Predictor", initial_sidebar_state="expanded")
+    st.title("📈 LSTM Stock Price Predictor")
+
+    # Setup sidebar and get parameters
+    params = setup_sidebar()
+    stock_symbol, start_date, end_date, sequence_length, future_steps, epochs, batch_size, run_button = params
+
+    if not run_button:
+        st.info("Adjust parameters in the sidebar and click '🚀 Run Analysis & Prediction'.")
+        st.stop()
+
+    # --- Main Workflow ---
+    # 1. Load and explore data
+    data = load_and_explore_data(stock_symbol, start_date, end_date)
+    if data is None:
+        st.stop() # Stop if data loading failed
+
+    # 2. Preprocess data
+    preprocess_result = preprocess_data(data, sequence_length)
+    if preprocess_result is None:
+        st.stop() # Stop if preprocessing failed
+    X_train, X_test, y_train, y_test, scaler, scaled_data = preprocess_result
+
+    # 3. Train and evaluate model
+    train_eval_result = train_evaluate_model(
+        X_train, y_train, X_test, y_test, scaler,
+        sequence_length, epochs, batch_size
+    )
+    if train_eval_result is None:
+        st.stop() # Stop if training/evaluation failed
+    model, history = train_eval_result
+
+    # 4. Predict and visualize
+    predict_and_visualize(
+        model, data, scaled_data, scaler,
+        sequence_length, future_steps,
+        X_train, X_test # Pass train/test sets for index calculation
+    )
+
+    st.success("Analysis and prediction complete!")
+    st.balloons()
+
+# Note: No need for if __name__ == "__main__": here,
+# as this module is imported and run_app() is called by streamlit_app.py

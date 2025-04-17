@@ -1,165 +1,180 @@
-import streamlit as st
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import pandas as pd
 import numpy as np
-import plotly.graph_objects as go
-import tensorflow as tf # For history object type hint
+from typing import Any # For Keras History object
 
-# Renamed function and updated to use 'Close' column
-def plot_close_price(stock_data: pd.DataFrame) -> go.Figure:
-    """Plots Closing Price with trendline and ATH/ATL."""
+# Import constants for styling (optional, but good practice)
+from ..constants import PLOT_BGCOLOR, PLOT_FONT_COLOR, PLOT_GRID_COLOR
+
+def _create_layout(title: str, xaxis_title: str = "Date", yaxis_title: str = "Price USD ($)") -> go.Layout:
+    """Helper function to create a standard Plotly layout."""
+    return go.Layout(
+        title=title,
+        xaxis_title=xaxis_title,
+        yaxis_title=yaxis_title,
+        xaxis_rangeslider_visible=False,
+        template="plotly_dark", # Use a dark theme
+        paper_bgcolor=PLOT_BGCOLOR,
+        plot_bgcolor=PLOT_BGCOLOR,
+        font=dict(color=PLOT_FONT_COLOR),
+        xaxis=dict(gridcolor=PLOT_GRID_COLOR),
+        yaxis=dict(gridcolor=PLOT_GRID_COLOR),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+    )
+
+def plot_raw_data(close_data: pd.Series) -> go.Figure:
+    """
+    Plots the raw closing price over time. Accepts a pandas Series.
+
+    Args:
+        close_data (pd.Series): Series with DatetimeIndex and closing prices.
+
+    Returns:
+        go.Figure: Plotly figure object.
+    """
     fig = go.Figure()
-    # Check if 'Close' is a top-level column
-    if 'Close' in stock_data.columns.get_level_values(0):
-        # Select the actual Series for the first ticker under 'Close'
-        close_data = stock_data['Close'].iloc[:, 0]
-
-        fig.add_trace(go.Scatter(x=close_data.index, y=close_data, mode='lines', name='Close Price',
-                                 line=dict(color='lightblue')))
-        # Use the Series for trendline
-        fig.add_trace(go.Scatter(x=close_data.index, y=close_data.rolling(window=100).mean(),
-                                 mode='lines', name='Trendline', line=dict(color='red', width=0.8)))
-
-        # Check if the Series has any non-null data before plotting ATH/ATL
-        if not close_data.empty and close_data.notna().any():
-            try:
-                all_time_high_close = close_data.idxmax()
-                all_time_low_close = close_data.idxmin()
-                fig.add_trace(go.Scatter(x=[all_time_high_close], y=[close_data.loc[all_time_high_close]],
-                                         mode='markers', marker=dict(color='red', size=10),
-                                         name='All-Time High Close'))
-                fig.add_trace(go.Scatter(x=[all_time_low_close], y=[close_data.loc[all_time_low_close]],
-                                         mode='markers', marker=dict(color='green', size=10),
-                                         name='All-Time Low Close'))
-                fig.update_layout(annotations=[
-                    dict(x=all_time_high_close, y=close_data.loc[all_time_high_close],
-                         xref="x", yref="y", text="ATH", showarrow=True, arrowhead=2, ax=-30, ay=-40, font=dict(color="red")),
-                    dict(x=all_time_low_close, y=close_data.loc[all_time_low_close],
-                         xref="x", yref="y", text="ATL", showarrow=True, arrowhead=2, ax=-30, ay=40, font=dict(color="green")),
-                ])
-            except ValueError as e:
-                st.warning(f"Could not determine ATH/ATL for Close price: {e}")
-
-    # Update title and axis label
-    fig.update_layout(title=f"Closing Price Visualization",
-                      xaxis_title="Date", yaxis_title="Closing Price", showlegend=True)
+    # Use .values to ensure numpy array is passed if needed by Plotly version
+    fig.add_trace(go.Scatter(x=close_data.index, y=close_data.values, mode='lines', name='Close Price'))
+    fig.update_layout(_create_layout(title="Stock Closing Price"))
     return fig
 
-def plot_volume(stock_data: pd.DataFrame) -> go.Figure:
-    """Plots Volume with ATH/ATL."""
+def plot_volume(volume_data: pd.Series) -> go.Figure:
+    """
+    Plots the trading volume over time. Accepts a pandas Series.
+
+    Args:
+        volume_data (pd.Series): Series with DatetimeIndex and volume data.
+
+    Returns:
+        go.Figure: Plotly figure object.
+    """
     fig = go.Figure()
-    if 'Volume' in stock_data.columns.get_level_values(0):
-        # Select the actual Series for the first ticker under 'Volume'
-        volume_data = stock_data['Volume'].iloc[:, 0]
-
-        fig.add_trace(
-            go.Bar(x=volume_data.index, y=volume_data, name='Volume', opacity=0.5, marker=dict(color='orange')))
-
-        # Check if the Series has any non-null data before plotting ATH/ATL
-        if not volume_data.empty and volume_data.notna().any():
-            try:
-                all_time_high_volume = volume_data.idxmax()
-                all_time_low_volume = volume_data.idxmin()
-                fig.add_trace(go.Scatter(x=[all_time_high_volume], y=[volume_data.loc[all_time_high_volume]],
-                                         mode='markers', marker=dict(color='red', size=10), name='All-Time High Volume'))
-                fig.add_trace(go.Scatter(x=[all_time_low_volume], y=[volume_data.loc[all_time_low_volume]],
-                                         mode='markers', marker=dict(color='green', size=10), name='All-Time Low Volume'))
-                fig.update_layout(annotations=[
-                    dict(x=all_time_high_volume, y=volume_data.loc[all_time_high_volume],
-                         xref="x", yref="y", text="ATH", showarrow=True, arrowhead=2, ax=-30, ay=-40, font=dict(color="red")),
-                    dict(x=all_time_low_volume, y=volume_data.loc[all_time_low_volume],
-                         xref="x", yref="y", text="ATL", showarrow=True, arrowhead=2, ax=-30, ay=40, font=dict(color="green")),
-                ])
-            except ValueError as e:
-                 st.warning(f"Could not determine ATH/ATL for Volume: {e}")
-
-    fig.update_layout(title=f"Volume Visualization",
-                      xaxis_title="Date", yaxis_title="Volume", showlegend=True)
+    # Use .values to ensure numpy array is passed if needed by Plotly version
+    fig.add_trace(go.Bar(x=volume_data.index, y=volume_data.values, name='Volume'))
+    fig.update_layout(_create_layout(title="Trading Volume", yaxis_title="Volume"))
     return fig
 
-def plot_candlestick(stock_data: pd.DataFrame) -> go.Figure:
-    """Plots Candlestick chart with ATH/ATL."""
-    fig = go.Figure()
-    required_cols = ['Open', 'High', 'Low', 'Close']
-    # Check if all required metrics are in the top level of columns
-    if all(col in stock_data.columns.get_level_values(0) for col in required_cols):
-        # Select the Series for the first ticker for each required column
-        open_data = stock_data['Open'].iloc[:, 0]
-        high_data = stock_data['High'].iloc[:, 0]
-        low_data = stock_data['Low'].iloc[:, 0]
-        close_data = stock_data['Close'].iloc[:, 0]
+def plot_candlestick(data: pd.DataFrame) -> go.Figure:
+    """
+    Creates a candlestick chart of the stock data.
 
-        fig.add_trace(go.Candlestick(x=stock_data.index, # Index is shared
-                                     open=open_data, high=high_data,
-                                     low=low_data, close=close_data,
-                                     name='Candlestick'))
+    Args:
+        data (pd.DataFrame): DataFrame with DatetimeIndex and OHLC columns.
 
-        # Check if 'Close' Series has non-null data for ATH/ATL
-        if not close_data.empty and close_data.notna().any():
-            try:
-                all_time_high = close_data.idxmax()
-                all_time_low = close_data.idxmin()
-                fig.add_trace(go.Scatter(x=[all_time_high], y=[close_data.loc[all_time_high]],
-                                         mode='markers', marker=dict(color='red', size=10), name='All-Time High Close'))
-                fig.add_trace(go.Scatter(x=[all_time_low], y=[close_data.loc[all_time_low]],
-                                         mode='markers', marker=dict(color='green', size=10), name='All-Time Low Close'))
-                fig.update_layout(annotations=[
-                    dict(x=all_time_high, y=close_data.loc[all_time_high],
-                         xref="x", yref="y", text="ATH", showarrow=True, arrowhead=2, ax=-30, ay=-40, font=dict(color="red")),
-                    dict(x=all_time_low, y=close_data.loc[all_time_low],
-                         xref="x", yref="y", text="ATL", showarrow=True, arrowhead=2, ax=-30, ay=40, font=dict(color="green")),
-                ])
-            except ValueError as e:
-                st.warning(f"Could not determine ATH/ATL for Candlestick Close: {e}")
+    Returns:
+        go.Figure: Plotly figure object.
+    """
+    # Handle potential MultiIndex columns from yfinance
+    ohlc_cols = {}
+    required = ['Open', 'High', 'Low', 'Close']
+    if isinstance(data.columns, pd.MultiIndex):
+        for col_name in required:
+            # Find the column where the first level matches
+            match = [col for col in data.columns if col[0] == col_name]
+            if match:
+                ohlc_cols[col_name] = data[match[0]]
+            else:
+                 # Cannot create candlestick without all OHLC
+                 return go.Figure(layout=_create_layout(title=f"Error: '{col_name}' column not found"))
+    else:
+        # Standard columns
+        if all(col in data.columns for col in required):
+             ohlc_cols = {col: data[col] for col in required}
+        else:
+            missing = [col for col in required if col not in data.columns]
+            return go.Figure(layout=_create_layout(title=f"Error: Missing columns {missing}"))
 
-    fig.update_layout(title=f"Candlestick Chart",
-                      xaxis_title="Date", yaxis_title="Price", showlegend=True, xaxis_rangeslider_visible=False)
+    fig = go.Figure(data=[go.Candlestick(x=data.index,
+                                         open=ohlc_cols['Open'],
+                                         high=ohlc_cols['High'],
+                                         low=ohlc_cols['Low'],
+                                         close=ohlc_cols['Close'],
+                                         name='Candlestick')])
+    fig.update_layout(_create_layout(title="Candlestick Chart"))
     return fig
 
-def plot_evaluation_metrics(history: tf.keras.callbacks.History, r2: float):
-    """Plots training/validation MAE, MSE, and R2 score."""
-    st.subheader("LSTM Model Evaluation Results")
-    tab1, tab2, tab3 = st.tabs(["MAE", "MSE", "R² Score"])
 
-    with tab1:
-        fig_mae = go.Figure()
-        fig_mae.add_trace(go.Scatter(x=np.arange(1, len(history.history['mean_absolute_error']) + 1),
-                                     y=history.history['mean_absolute_error'], mode='lines', name='Training MAE', line=dict(color='blue')))
-        fig_mae.add_trace(go.Scatter(x=np.arange(1, len(history.history['val_mean_absolute_error']) + 1),
-                                     y=history.history['val_mean_absolute_error'], mode='lines', name='Validation MAE', line=dict(color='orange')))
-        fig_mae.update_layout(title='Training and Validation Mean Absolute Error (MAE)', xaxis_title='Epochs', yaxis_title='MAE', legend=dict(x=0.01, y=0.99))
-        st.plotly_chart(fig_mae, use_container_width=True)
+def plot_evaluation_metrics(history: Any, mse: float, r2: float) -> go.Figure:
+    """
+    Plots the model training history (loss, val_loss) and displays evaluation metrics.
 
-    with tab2:
-        fig_mse = go.Figure()
-        fig_mse.add_trace(go.Scatter(x=np.arange(1, len(history.history['mean_squared_error']) + 1),
-                                     y=history.history['mean_squared_error'], mode='lines', name='Training MSE', line=dict(color='green')))
-        fig_mse.add_trace(go.Scatter(x=np.arange(1, len(history.history['val_mean_squared_error']) + 1),
-                                     y=history.history['val_mean_squared_error'], mode='lines', name='Validation MSE', line=dict(color='red')))
-        fig_mse.update_layout(title='Training and Validation Mean Squared Error (MSE)', xaxis_title='Epochs', yaxis_title='MSE', legend=dict(x=0.01, y=0.99))
-        st.plotly_chart(fig_mse, use_container_width=True)
+    Args:
+        history (Any): Keras History object returned by model.fit().
+        mse (float): Mean Squared Error on the test set (original scale).
+        r2 (float): R-squared score on the test set (original scale).
 
-    with tab3:
-        st.metric(label="Test Set R² Score", value=f"{r2:.4f}")
-        st.info("R² (Coefficient of Determination) measures how well the predictions approximate the real data points. An R² of 1 indicates perfect prediction.")
+    Returns:
+        go.Figure: Plotly figure object.
+    """
+    fig = make_subplots(rows=1, cols=1) # Simple plot for loss
 
-def plot_predictions(stock_data_index: pd.Index, y_test_original: np.ndarray, predictions: np.ndarray, future_dates: pd.DatetimeIndex, future_predictions: np.ndarray):
-    """Plots true prices, test set predictions, and future predictions."""
-    st.subheader("LSTM Stock Price Predictions")
-    fig_results = go.Figure()
+    # Check if history object and history attribute exist
+    if history and hasattr(history, 'history'):
+        hist_dict = history.history
+        # Check for common loss keys ('loss', 'mae') and validation counterparts
+        loss_key = 'loss' if 'loss' in hist_dict else ('mae' if 'mae' in hist_dict else None)
+        val_loss_key = 'val_loss' if 'val_loss' in hist_dict else ('val_mae' if 'val_mae' in hist_dict else None)
 
-    # True Prices (Test Set)
-    fig_results.add_trace(go.Scatter(x=stock_data_index, y=y_test_original.flatten(), # Use provided index directly
-                                     mode='lines', name='True Prices (Test Set)', line=dict(color='blue')))
+        if loss_key:
+            fig.add_trace(go.Scatter(y=hist_dict[loss_key], mode='lines', name='Training Loss (MAE)'), row=1, col=1)
+        if val_loss_key:
+            fig.add_trace(go.Scatter(y=hist_dict[val_loss_key], mode='lines', name='Validation Loss (MAE)'), row=1, col=1)
 
-    # Predicted Prices (Test Set)
-    fig_results.add_trace(go.Scatter(x=stock_data_index, y=predictions.flatten(), # Use provided index directly
-                                     mode='lines', name='Predicted Prices (Test Set)', line=dict(color='red', dash='dot')))
+    # Update layout
+    title = f"Model Training History<br>Test MSE: {mse:,.2f} | Test R²: {r2:.4f}"
+    fig.update_layout(
+        _create_layout(title=title, xaxis_title="Epoch", yaxis_title="Mean Absolute Error (Loss)")
+    )
+    fig.update_layout(height=400) # Adjust height if needed
+    return fig
 
-    # Future Predictions
-    fig_results.add_trace(go.Scatter(x=future_dates, y=future_predictions.flatten(),
-                                     mode='lines', name='Future Predictions', line=dict(color='green')))
 
-    fig_results.update_layout(title='Stock Price Prediction: True vs. Predicted vs. Future',
-                              xaxis_title='Date', yaxis_title='Stock Price',
-                              legend=dict(x=0.01, y=0.99, traceorder='normal'))
-    st.plotly_chart(fig_results, use_container_width=True)
+def plot_predictions(
+    actual_data: pd.Series, # Full actual 'Close' price series
+    actual_test_df: pd.DataFrame, # Actual values for the test period
+    predicted_test_df: pd.DataFrame, # Predicted values for the test period
+    future_df: pd.DataFrame, # Predicted future values
+    sequence_length: int # To know where training data ends visually
+) -> go.Figure:
+    """
+    Plots the actual stock prices, test set predictions, and future predictions.
+
+    Args:
+        actual_data (pd.Series): The complete actual 'Close' price data with DatetimeIndex.
+        actual_test_df (pd.DataFrame): DataFrame with 'Actual' column and DatetimeIndex for test period.
+        predicted_test_df (pd.DataFrame): DataFrame with 'Predicted' column and DatetimeIndex for test period.
+        future_df (pd.DataFrame): DataFrame with 'Future' column and DatetimeIndex for future period.
+        sequence_length (int): The lookback window size.
+
+    Returns:
+        go.Figure: Plotly figure object.
+    """
+    fig = go.Figure()
+
+    # Plot Actual Test Data - Use .values
+    fig.add_trace(go.Scatter(x=actual_test_df.index, y=actual_test_df['Actual'].values,
+                             mode='lines', name='Actual Test Price', line=dict(color='orange')))
+
+    # Plot Predicted Test Data - Use .values
+    fig.add_trace(go.Scatter(x=predicted_test_df.index, y=predicted_test_df['Predicted'].values,
+                             mode='lines', name='Predicted Test Price', line=dict(color='yellow', dash='dot')))
+
+    # Plot Future Predictions - Use .values
+    fig.add_trace(go.Scatter(x=future_df.index, y=future_df['Future'].values,
+                             mode='lines', name='Future Predictions', line=dict(color='red', dash='dash')))
+
+    # Determine the overall range for the plot
+    # Show some history before test starts + future predictions
+    plot_start_date = actual_data.index.min() # Start from the beginning of loaded data
+    if not actual_test_df.empty:
+         # If test data exists, maybe start plot a bit before it
+         plot_start_date = max(plot_start_date, actual_test_df.index.min() - pd.Timedelta(days=90))
+
+    plot_end_date = future_df.index.max() if not future_df.empty else actual_test_df.index.max()
+
+    fig.update_layout(
+        _create_layout(title="Actual vs. Predicted Stock Prices"),
+        xaxis_range=[plot_start_date, plot_end_date] # Set x-axis range based on dates
+    )
+    return fig
