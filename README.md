@@ -161,6 +161,7 @@ lstm-trend/
 ├── pyproject.toml            # Project metadata + dependencies (uv)
 ├── uv.lock                   # Locked dependency versions
 ├── requirements.txt          # Unpinned deps, for people who prefer pip
+├── run.sh                    # Launcher that sets up GPU libs, then runs the app
 └── README.md                 # This file
 ```
 
@@ -200,6 +201,36 @@ A few notes:
   too — the progress bar will keep you company.
 - If you'd rather use `pip`, `requirements.txt` lists the same dependencies, but
   honestly, `uv sync` is the path I test and recommend.
+
+### Running on a machine with an NVIDIA GPU
+
+TensorFlow runs fine on CPU, but if you have an NVIDIA GPU (I tested this on
+WSL2 with an RTX 3050) training becomes much faster — my full train-and-predict
+run went from a few minutes down to about 40 seconds. It took me a while to
+figure out the setup, so here's what worked:
+
+```bash
+# 1. Install the CUDA/cuDNN libraries alongside the project (only on your own
+#    machine — the cloud deployment doesn't need these)
+uv sync --extra gpu
+
+# 2. Just run the launcher script — it points TensorFlow at the CUDA libraries
+#    inside the virtualenv, then starts the app
+./run.sh
+```
+
+A few gotchas I hit along the way, in case you're stuck too:
+
+- Modern TensorFlow ships as a Python package that expects CUDA libraries at
+  runtime, and on a typical setup they aren't where it looks for them. The
+  `gpu` extra above installs them into the virtualenv; `run.sh` just exports
+  `LD_LIBRARY_PATH` to point at them.
+- It's not enough to install only part of the CUDA set. My first attempt used
+  three of the packages and TensorFlow quietly gave up with a generic "cannot
+  dlopen some GPU libraries" warning — the missing one wasn't even named in the
+  message. The full set in `pyproject.toml` fixed it.
+- Your NVIDIA driver (installed system-wide) must still be present; the CUDA
+  libraries are just the "userland" part of the stack.
 
 ## Deploying to Streamlit Community Cloud
 

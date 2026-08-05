@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import datetime
+from functools import lru_cache
 from typing import Optional, Tuple, Any  # Added Any for history object
 
 # Import constants
@@ -42,6 +43,14 @@ from .models.callbacks import CustomProgressBarCallback
 History = Any
 
 
+@lru_cache(maxsize=1)
+def _training_device() -> str:
+    """Returns 'GPU' or 'CPU', depending on what TensorFlow can see."""
+    import tensorflow as tf
+
+    return "GPU" if tf.config.list_physical_devices("GPU") else "CPU"
+
+
 def setup_sidebar() -> Tuple[
     str, datetime.date, datetime.date, int, int, int, int, bool
 ]:
@@ -53,6 +62,7 @@ def setup_sidebar() -> Tuple[
                future_steps, epochs, batch_size, run_button status.
     """
     st.sidebar.header("Configuration")
+    st.sidebar.caption(f"Training device: {_training_device()}")
     stock_symbol = st.sidebar.text_input("Stock Symbol", DEFAULT_SYMBOL).upper()
     start_date = st.sidebar.date_input("Start Date", DEFAULT_START_DATE)
     end_date = st.sidebar.date_input("End Date", DEFAULT_END_DATE)
