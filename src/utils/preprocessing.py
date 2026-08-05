@@ -1,6 +1,7 @@
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
-from typing import Tuple, Optional, Any # Added Any for scaler type
+from typing import Tuple, Optional, Any  # Added Any for scaler type
+
 
 def scale_data(data: np.ndarray) -> Tuple[np.ndarray, Any]:
     """
@@ -16,6 +17,7 @@ def scale_data(data: np.ndarray) -> Tuple[np.ndarray, Any]:
     scaled_data = scaler.fit_transform(data)
     return scaled_data, scaler
 
+
 def inverse_scale_data(scaled_data: np.ndarray, scaler: Any) -> np.ndarray:
     """
     Applies inverse transformation to scaled data using the provided scaler.
@@ -30,9 +32,9 @@ def inverse_scale_data(scaled_data: np.ndarray, scaler: Any) -> np.ndarray:
     original_data = scaler.inverse_transform(scaled_data)
     return original_data
 
+
 def create_sequences(
-    data: np.ndarray,
-    sequence_length: int
+    data: np.ndarray, sequence_length: int
 ) -> Optional[Tuple[np.ndarray, np.ndarray]]:
     """
     Creates input sequences (X) and corresponding target values (y) for time series forecasting.
@@ -52,11 +54,11 @@ def create_sequences(
     y = []
     if len(data) <= sequence_length:
         # Not enough data points to create even one sequence
-        return None # Indicate failure clearly
+        return None  # Indicate failure clearly
 
     for i in range(sequence_length, len(data)):
-        X.append(data[i-sequence_length:i, 0]) # Input sequence
-        y.append(data[i, 0])                   # Target value (next step)
+        X.append(data[i - sequence_length : i, 0])  # Input sequence
+        y.append(data[i, 0])  # Target value (next step)
 
     if not X:
         # Should not happen if len(data) > sequence_length, but as a safeguard
