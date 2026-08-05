@@ -1,20 +1,41 @@
-# This file acts as the entry point for Streamlit
-import sys
-from pathlib import Path
+"""LSTM Trend — multipage Streamlit entry point.
 
-# Ensure the src directory is in the Python path if running from the root
-# Get the directory containing this script
-APP_DIR = Path(__file__).parent
-# Add the app directory itself (which contains src) to the path
-sys.path.insert(0, str(APP_DIR))
+Run with:  ./run.sh   (or: uv run streamlit run streamlit_app.py)
+"""
 
-# Import the main app function from the refactored app module
-try:
-    from src.app import run_app
-except ImportError as e:
-    print(f"Error importing run_app: {e}")
-    print("Ensure 'src/app.py' exists and the structure is correct.")
-    sys.exit(1)
+import os
 
-if __name__ == "__main__":
-    run_app()
+os.environ.setdefault("KERAS_BACKEND", "torch")
+
+import streamlit as st  # noqa: E402
+
+from src.constants import APP_TITLE, GITHUB_URL  # noqa: E402
+from src.ui.pages import about, dashboard, findings, methodology  # noqa: E402
+
+st.set_page_config(
+    page_title=APP_TITLE,
+    page_icon="📈",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+st.logo(
+    "assets/logo.svg",
+    icon_image="assets/logo.svg",
+    link=GITHUB_URL,
+)
+
+pages = [
+    st.Page(
+        dashboard.render,
+        title="Dashboard",
+        icon="📈",
+        url_path="dashboard",
+        default=True,
+    ),
+    st.Page(findings.render, title="Findings", icon="🔬", url_path="findings"),
+    st.Page(methodology.render, title="Methodology", icon="📚", url_path="methodology"),
+    st.Page(about.render, title="About", icon="🎓", url_path="about"),
+]
+
+st.navigation(pages, position="sidebar").run()

@@ -1,6 +1,9 @@
 [theme]
-primaryColor="#f63366" # Streamlit pink - can be changed
-backgroundColor="#0E1117" # Dark background
-secondaryBackgroundColor="#262730" # Slightly lighter dark for sidebar/expanders
-textColor="#FAFAFA" # White text
-font="sans serif"
+base = "dark"
+primaryColor = "#4FB477"
+backgroundColor = "#0E1117"
+secondaryBackgroundColor = "#1A1E27"
+textColor = "#F0F2F6"
+
+[browser]
+gatherUsageStats = false

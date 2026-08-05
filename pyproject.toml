@@ -1,32 +1,24 @@
 [project]
 name = "lstm-trend"
-version = "0.1.0"
-description = "A Streamlit app that forecasts stock prices with an LSTM neural network, trained on Yahoo Finance data."
+version = "0.2.0"
+description = "A Streamlit app that forecasts stock prices with an LSTM neural network (Keras 3 on PyTorch), trained on Yahoo Finance data."
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "keras>=3.15.1",
     "numpy>=2.5.1",
     "pandas>=3.0.5",
     "plotly>=6.9.0",
     "scikit-learn>=1.9.0",
     "starlette>=0.46.0,<1.0",
     "streamlit>=1.61.0",
-    "tensorflow>=2.21.0",
+    "torch>=2.9.0", # latest version is 2.13.0
     "yfinance>=1.5.2",
 ]
 
-[project.optional-dependencies]
-gpu = [
-    "nvidia-cublas-cu12",
-    "nvidia-cuda-nvrtc-cu12",
-    "nvidia-cuda-runtime-cu12",
-    "nvidia-cudnn-cu12",
-    "nvidia-cufft-cu12",
-    "nvidia-curand-cu12",
-    "nvidia-cusolver-cu12",
-    "nvidia-cusparse-cu12",
-    "nvidia-nccl-cu12",
-    "nvidia-nvtx-cu12",
+[dependency-groups]
+dev = [
+    "pytest>=8.0", # latest version is 9.1.1
 ]
 
 [tool.uv]
