@@ -56,6 +56,15 @@ st.set_page_config(
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded",
+    menu_items={
+        "Get help": "https://docs.streamlit.io/",
+        "Report a bug": f"{GITHUB_URL}/issues",
+        "About": (
+            "LSTM Trend — an empirical study of LSTM forecasting on stock "
+            "prices, built as a final year project. Educational tool, not "
+            "investment advice."
+        ),
+    },
 )
 
 st.logo(
