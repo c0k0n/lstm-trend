@@ -119,18 +119,16 @@ In plain words:
   via a segmented control instead of a plain slider.
 - Forecast table with formatted columns and a CSV download button.
 - Dark theme configured in `.streamlit/config.toml`, custom logo in the sidebar.
-- Light/dark mode: the whole app switches between the two themes from
-  Streamlit's Settings menu, and a sidebar toggle flips the charts (and the
-  app chrome) without a restart. A `?theme=` URL parameter deep-links it.
 - Shareable deep links: after a run the ticker, dates and horizon are written
   back to the URL, so you can bookmark or share an exact analysis.
-- The training device (GPU or CPU) is shown in the sidebar.
+- The training device (GPU or CPU) is shown in the sidebar, and a "Current
+  settings" summary (ticker, dates, horizon) sits right below the Run button.
 - Loading states everywhere: skeletons while data downloads, a streaming
   verdict on the Findings page, a live "analysis run at …" age indicator that
   refreshes itself, and a one-time confetti celebration after the first run.
-- A pinned bottom bar with a one-click **Run analysis** shortcut, welcome and
-  "how to read the charts" dialogs, jump menus on the Dashboard and Findings,
-  and a theme-aware app footer with the GitHub link.
+- A welcome dialog, a "how to read the charts" dialog, quick-navigation page
+  links for first-time visitors, and a theme-aware app footer with the GitHub
+  link.
 - Self-hosted Inter font, rounded widget corners, robots.txt and sitemap for
   the deployed site.
 
@@ -238,12 +236,11 @@ lstm-trend/
 │   └── ui/                   # Streamlit-specific rendering
 │       ├── charts.py         # All Plotly chart builders
 │       ├── components.py     # Sidebar config, progress UI, result rendering
-│       ├── theme.py          # Light/dark toggle shared by the pages
 │       └── pages/            # dashboard, analytics, compare, findings, methodology, about
 │           └── nav.py        # Page registry (st.Page objects) for navigation
 ├── tests/                    # pytest unit tests + AppTest E2E
 ├── .github/workflows/ci.yml  # CI: uv sync, check, format, pytest
-├── .streamlit/config.toml    # Dark/light themes, Inter font, static serving
+├── .streamlit/config.toml    # Dark theme, Inter font, static serving
 ├── static/                   # robots.txt, sitemap.xml, self-hosted Inter font
 ├── assets/logo.svg           # Sidebar logo
 ├── pyproject.toml            # Project metadata + dependencies (uv)
@@ -319,8 +316,8 @@ The suite covers:
 - AppTest end-to-end tests that boot the real app, click through a full
   analysis (this one downloads live data from Yahoo Finance), and check the
   Analytics, Compare and Findings pages — including the lazy tabs, the model
-  settings form, deep-link query params, the theme toggle, the jump menus,
-  and the verdict feedback (`tests/test_app.py`).
+  settings form, deep-link query params, the sidebar settings caption, and
+  the verdict feedback (`tests/test_app.py`).
 
 CI runs on every push to `main` via GitHub Actions: `uv sync`, `uv check`
 (type-check), `uv format --check`, then `pytest`.
@@ -364,8 +361,8 @@ Everything is controlled from the sidebar (inside popovers):
 
 The model settings only apply once **Apply model settings** is pressed; the
 date pickers take effect immediately. You can also deep-link any analysis:
-`?ticker=MSFT&start=2024-01-01&end=2025-01-01&horizon=30` (plus
-`theme=light|dark`) prefills the sidebar and triggers a run.
+`?ticker=MSFT&start=2024-01-01&end=2025-01-01&horizon=30` prefills the
+sidebar and triggers a run.
 
 Some other fixed settings live in `src/constants.py`: 80/20 train-test split,
 10% validation split, 100 LSTM units, 0.2 dropout, early-stopping patience,
@@ -384,10 +381,9 @@ the moving-average window, and the plot colours.
   without the `LD_LIBRARY_PATH` hacks), grew into a multipage app with deep
   analytics and comparison pages, added baseline comparisons and an empirical
   Findings page, and introduced a test suite with GitHub Actions CI.
-- **2026 — modern UI pass.** Lazy tab loading, dialogs, jump menus, a pinned
-  bottom bar, model-settings forms, deep-linkable URLs, skeletons and
-  streaming status, self-hosted fonts and a theme-aware footer — with AppTest
-  coverage for all of it.
+- **2026 — modern UI pass.** Lazy tab loading, dialogs, model-settings forms,
+  deep-linkable URLs, skeletons and streaming status, self-hosted fonts and a
+  theme-aware footer — with AppTest coverage for all of it.
 
 The git history still contains all the earlier commits, if you ever want to see
 how it evolved.

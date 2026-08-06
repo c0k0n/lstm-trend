@@ -57,16 +57,9 @@ def test_device_caption_present(app):
 
 
 @pytest.mark.e2e
-def test_theme_toggle_present(app):
-    toggles = [t for t in app.toggle if t.label == "🌙 Dark mode"]
-    assert toggles and toggles[0].value is True
-
-
-@pytest.mark.e2e
-def test_dashboard_jump_menu(app):
-    menus = [m for m in app.menu_button if m.label == "More"]
-    assert menus
-    assert "📚 Methodology" in menus[0].options
+def test_sidebar_settings_caption(app):
+    captions = [c.value for c in app.sidebar.caption]
+    assert any("Current settings:" in c for c in captions)
 
 
 @pytest.mark.e2e
@@ -85,14 +78,12 @@ def test_query_param_deep_links():
     at.query_params["start"] = "2024-01-01"
     at.query_params["end"] = "2025-01-01"
     at.query_params["horizon"] = "30"
-    at.query_params["theme"] = "light"
     at.run()
     assert not at.exception
     assert at.session_state["ticker_custom"] == "MSFT"
     assert at.session_state["start_date"].isoformat() == "2024-01-01"
     assert at.session_state["end_date"].isoformat() == "2025-01-01"
     assert at.session_state["horizon_preset"] == 30
-    assert at.session_state["theme_dark"] is False
 
 
 @pytest.mark.e2e

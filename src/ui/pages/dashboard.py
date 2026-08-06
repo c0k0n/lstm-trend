@@ -34,28 +34,6 @@ _WELCOME_DIALOG = """
 """
 
 
-def _jump_menu() -> None:
-    """Menu button that jumps between pages."""
-    from .nav import get_pages
-
-    pages = get_pages()
-    choices = {
-        "📊 Analytics": pages["analytics"],
-        "⚖️ Compare": pages["compare"],
-        "🔬 Findings": pages["findings"],
-        "📚 Methodology": pages["methodology"],
-    }
-    choice = st.menu_button(
-        "More",
-        options=list(choices),
-        key="dash_menu",
-        help="Jump straight to another page of the app.",
-    )
-    if choice is not None:
-        st.session_state["dash_menu"] = None
-        st.switch_page(choices[choice])
-
-
 def _page_links() -> None:
     """Quick-navigation cards for first-time visitors."""
     from .nav import get_pages
@@ -82,20 +60,6 @@ def _show_welcome_dialog() -> None:
             st.rerun()
 
     _welcome()
-
-
-def _bottom_bar(params: dict) -> bool:
-    """Pinned bottom bar with a one-click rerun of the analysis."""
-    with st.bottom:
-        col1, col2 = st.columns([5, 1])
-        with col1:
-            st.caption(
-                f"Current settings: **{params['symbol']}** · "
-                f"{params['start_date']} → {params['end_date']} · "
-                f"horizon {params['future_steps']} days"
-            )
-        with col2:
-            return st.button("🚀 Run analysis", type="primary", key="run_button_bottom")
 
 
 def _apply_query_params() -> None:
@@ -150,12 +114,7 @@ def render() -> None:
     _show_welcome_dialog()
     _apply_query_params()
 
-    col_title, col_menu = st.columns([5, 1])
-    with col_title:
-        render_hero()
-    with col_menu:
-        st.space("large")
-        _jump_menu()
+    render_hero()
     st.space("small")
 
     with st.container(border=True):
@@ -176,9 +135,13 @@ def render() -> None:
     sidebar_clicked = st.sidebar.button(
         "🚀 Run analysis", type="primary", width="stretch", key="run_button"
     )
-    bottom_clicked = _bottom_bar(params)
+    st.sidebar.caption(
+        f"Current settings: **{params['symbol']}** · "
+        f"{params['start_date']} → {params['end_date']} · "
+        f"horizon {params['future_steps']} days"
+    )
 
-    if not (sidebar_clicked or bottom_clicked):
+    if not sidebar_clicked:
         existing = get_analysis()
         if existing is not None:
             st.info(

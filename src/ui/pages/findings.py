@@ -21,27 +21,6 @@ METRIC_LABELS = {
 }
 
 
-def _actions_menu() -> None:
-    """Menu button that jumps between pages."""
-    from .nav import get_pages
-
-    pages = get_pages()
-    choices = {
-        "📈 Dashboard": pages["dashboard"],
-        "📊 Analytics": pages["analytics"],
-        "📚 Methodology": pages["methodology"],
-    }
-    choice = st.menu_button(
-        "Actions",
-        options=list(choices),
-        key="findings_menu",
-        help="Jump to another page of the app.",
-    )
-    if choice is not None:
-        st.session_state["findings_menu"] = None
-        st.switch_page(choices[choice])
-
-
 _CHARTS_GUIDE = """
 - **Test RMSE by method** — a bar chart of the same three numbers;
   the shortest bar wins.
@@ -113,16 +92,12 @@ def render() -> None:
             st.switch_page(get_pages()["dashboard"])
         return
 
-    col_caption, col_actions = st.columns([5, 1])
-    with col_caption:
-        st.caption(
-            f"Based on the last analysis of **{result.symbol}** — "
-            f"{len(result.data)} daily rows, "
-            f"lookback {result.params['sequence_length']} days, "
-            f"epochs {result.params['epochs']}, batch {result.params['batch_size']}."
-        )
-    with col_actions:
-        _actions_menu()
+    st.caption(
+        f"Based on the last analysis of **{result.symbol}** — "
+        f"{len(result.data)} daily rows, "
+        f"lookback {result.params['sequence_length']} days, "
+        f"epochs {result.params['epochs']}, batch {result.params['batch_size']}."
+    )
     st.space("small")
 
     test_data = result.data.iloc[result.test_start_index :]

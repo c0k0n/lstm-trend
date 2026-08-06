@@ -19,29 +19,16 @@ from ..constants import (
 from ..core.baselines import MOVING_AVERAGE, NAIVE
 from ..core.baselines import moving_average_forecast, naive_forecast
 
-_DARK = True
-
-
-def set_dark(dark: bool) -> None:
-    """Switch chart styling between the dark and light app themes."""
-    global _DARK
-    _DARK = dark
+_DARK_THEME = dict(
+    template="plotly_dark",
+    font=PLOT_FONT_COLOR,
+    grid=PLOT_GRID_COLOR,
+    actual=COLOR_ACTUAL,
+)
 
 
 def _theme() -> dict[str, Any]:
-    if _DARK:
-        return dict(
-            template="plotly_dark",
-            font=PLOT_FONT_COLOR,
-            grid=PLOT_GRID_COLOR,
-            actual=COLOR_ACTUAL,
-        )
-    return dict(
-        template="plotly_white",
-        font="#31333F",
-        grid="rgba(49,51,63,0.10)",
-        actual="#31333F",
-    )
+    return _DARK_THEME
 
 
 def _layout(

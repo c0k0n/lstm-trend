@@ -13,18 +13,6 @@ baseRadius = "0.5rem"
 buttonRadius = "0.5rem"
 showWidgetBorder = true
 
-# Light variant: users can switch via the Settings menu (or "Use system settings")
-[theme.light]
-primaryColor = "#1F8A55"
-backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#F2F4F7"
-textColor = "#31333F"
-font = "Inter"
-headingFont = "Inter"
-baseRadius = "0.5rem"
-buttonRadius = "0.5rem"
-showWidgetBorder = true
-
 # Self-hosted Inter (variable weight) served from ./static
 [[theme.fontFaces]]
 family = "Inter"

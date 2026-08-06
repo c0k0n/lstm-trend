@@ -11,27 +11,23 @@ import streamlit as st  # noqa: E402
 
 from src.constants import APP_TITLE, GITHUB_URL  # noqa: E402
 from src.ui.pages.nav import get_pages  # noqa: E402
-from src.ui.theme import render_theme_toggle  # noqa: E402
 
 
-def _footer_html(dark: bool) -> str:
-    """App-wide footer; CSS vars track the theme, with matching fallbacks."""
-    border = "#3D4452" if dark else "#E3E7EE"
-    text = "#9AA1AD" if dark else "#5B6470"
-    link = "#4FB477" if dark else "#1F8A55"
-    return f"""
+def _footer_html() -> str:
+    """App-wide footer; CSS vars track the theme, with dark fallbacks."""
+    return """
 <footer
   style="
     margin-top: 2.5rem;
     padding: 0.9rem 1.25rem;
-    border: 1px solid var(--border-color, {border});
+    border: 1px solid var(--border-color, #3D4452);
     border-radius: var(--radius-md, 0.5rem);
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
     flex-wrap: wrap;
-    color: var(--text-color, {text});
+    color: var(--text-color, #9AA1AD);
     font-size: 0.8rem;
   "
 >
@@ -43,7 +39,7 @@ def _footer_html(dark: bool) -> str:
     href="{GITHUB_URL}"
     target="_blank"
     rel="noopener noreferrer"
-    style="color: var(--link-color, {link}); text-decoration: none"
+    style="color: var(--link-color, #4FB477); text-decoration: none"
   >
     Source on GitHub ↗
   </a>
@@ -73,10 +69,8 @@ st.logo(
     link=GITHUB_URL,
 )
 
-dark = render_theme_toggle()
-
 pages = list(get_pages().values())
 
 st.navigation(pages, position="sidebar").run()
 
-st.html(_footer_html(dark))
+st.html(_footer_html())
