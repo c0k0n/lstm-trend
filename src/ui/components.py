@@ -204,6 +204,9 @@ def run_analysis_with_ui(params: dict[str, Any]) -> Optional[AnalysisResult]:
         status.update(label="Analysis complete", state="complete", expanded=False)
 
     store_analysis(result)
+    if not st.session_state.get("balloons_done"):
+        st.session_state["balloons_done"] = True
+        st.balloons()
     st.toast(f"Analysis complete for {result.symbol}", icon="✅")
     return result
 

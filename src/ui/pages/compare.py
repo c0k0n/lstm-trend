@@ -118,7 +118,11 @@ def render() -> None:
     series: dict[str, pd.Series] = {}
     with st.status("Downloading data…", expanded=False) as status:
         for symbol in symbols:
+            loaded_key = f"compare_loaded_{symbol}_{start}_{end}"
+            if not st.session_state.get(loaded_key):
+                st.skeleton(height=20, width="stretch")
             data = load_data_cached(symbol, start, end)
+            st.session_state[loaded_key] = True
             if data is None or len(data) < 60:
                 st.warning(f"Not enough data for **{symbol}** in this range — skipped.")
                 continue

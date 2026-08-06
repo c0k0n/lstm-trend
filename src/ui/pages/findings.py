@@ -1,5 +1,8 @@
 """Findings page: metrics, baselines and the empirical story."""
 
+import time
+from collections.abc import Iterator
+
 import pandas as pd
 import streamlit as st
 
@@ -59,6 +62,23 @@ def _charts_help_dialog() -> None:
 
     if st.button("💡 How to read the charts", key="charts_help_btn"):
         _explain()
+
+
+def _verdict_stream(text: str) -> Iterator[str]:
+    """Yield the verdict word by word, so st.write_stream can type it out."""
+    for word in text.split(" "):
+        yield word + " "
+        time.sleep(0.02)
+
+
+def _render_verdict(text: str, result) -> None:
+    """Stream the verdict once per result, then show it statically."""
+    stream_key = f"verdict_streamed_{id(result)}"
+    if st.session_state.get(stream_key):
+        st.markdown(text)
+    else:
+        st.write_stream(_verdict_stream(text))
+        st.session_state[stream_key] = True
 
 
 def _metrics_table(result) -> pd.DataFrame:
@@ -178,7 +198,7 @@ def render() -> None:
     with st.container(border=True):
         st.markdown(f"### {icon} Verdict")
         st.badge(verdict_badge[0], color=verdict_badge[1])
-        st.markdown(verdict)
+        _render_verdict(verdict, result)
         st.feedback("thumbs", key="verdict_feedback")
 
     with st.expander("How to read the numbers"):

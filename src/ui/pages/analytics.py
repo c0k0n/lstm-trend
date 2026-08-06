@@ -266,6 +266,24 @@ def _risk(data: pd.DataFrame) -> None:
         st.plotly_chart(charts.plot_volume_return_scatter(data), width="stretch")
 
 
+def _load_data(
+    symbol: str, start: datetime.date, end: datetime.date
+) -> pd.DataFrame | None:
+    """Fetch OHLCV data, showing skeleton placeholders during a first download."""
+    loaded_key = f"analytics_loaded_{symbol}_{start}_{end}"
+    if st.session_state.get(loaded_key):
+        return load_data_cached(symbol, start, end)
+
+    placeholder = st.empty()
+    with placeholder.container():
+        st.skeleton(height=20, width="stretch")
+        st.skeleton(height=360, width="stretch")
+    data = load_data_cached(symbol, start, end)
+    placeholder.empty()
+    st.session_state[loaded_key] = True
+    return data
+
+
 def render() -> None:
     st.set_page_config(
         page_title=f"Analytics — {APP_TITLE} | Stock EDA, risk metrics and indicators",
@@ -285,7 +303,7 @@ def render() -> None:
         st.warning("Enter a ticker to analyse.")
         return
 
-    data = load_data_cached(symbol, start, end)
+    data = _load_data(symbol, start, end)
     if data is None or len(data) < 60:
         st.error(
             f"Could not download enough data for **{symbol}** in this date range. "
