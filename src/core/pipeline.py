@@ -9,6 +9,7 @@ from typing import Any, cast
 
 import numpy as np
 import pandas as pd
+from keras.utils import set_random_seed
 from sklearn.preprocessing import MinMaxScaler
 
 from ..constants import (
@@ -17,6 +18,7 @@ from ..constants import (
     LSTM_DROPOUT,
     LSTM_UNITS,
     MOVING_AVERAGE_WINDOW,
+    RANDOM_SEED,
     TRAIN_TEST_SPLIT_RATIO,
     VALIDATION_SPLIT,
 )
@@ -73,6 +75,7 @@ def run_analysis(
     progress_callback: ProgressReporterCallback | None = None,
 ) -> AnalysisResult:
     """Run the full pipeline for the given parameters and return the result."""
+    set_random_seed(RANDOM_SEED)
     data = download_stock_data(symbol, start_date, end_date)
     if data is None or data.empty:
         raise PipelineError(
@@ -93,6 +96,11 @@ def run_analysis(
     split = int(len(x) * TRAIN_TEST_SPLIT_RATIO)
     if split == 0 or split == len(x):
         raise PipelineError("Train/test split produced an empty set. Adjust the range.")
+    if split < 20:
+        raise PipelineError(
+            f"Only {len(x)} training windows available — too few to train and "
+            "validate reliably. Use an earlier start date or shorter lookback."
+        )
     x_train, x_test = x[:split], x[split:]
     y_train, y_test = y[:split], y[split:]
     test_start_index = split + sequence_length

@@ -52,6 +52,79 @@ def test_drawdown_events_structure(close):
         assert (events["Depth"] <= -0.02).all()
 
 
+def test_drawdown_events_captures_multi_day_drawdown():
+    """A clear 10-day dip must be reported as ONE event with the right depth."""
+    values = np.concatenate(
+        [np.linspace(100, 120, 15), np.linspace(120, 60, 10), np.linspace(60, 125, 15)]
+    )
+    close = pd.Series(values, index=pd.bdate_range("2024-01-01", periods=40))
+    events = analytics.drawdown_events(close, min_depth=0.05)
+
+    assert len(events) == 1
+    row = events.iloc[0]
+    assert row["Depth"] == pytest.approx(-0.5, rel=1e-2)
+    # Calendar days between the start and the recovery back above the peak
+    assert 20 <= row["Duration (days)"] <= 35
+    assert row["Trough"] > row["Start"]
+
+
+def test_drawdown_events_splits_separate_episodes():
+    """Two distinct dips must produce two events, most recent first."""
+    values = np.concatenate(
+        [
+            np.linspace(100, 60, 10),
+            np.linspace(60, 110, 10),
+            np.linspace(110, 70, 10),
+            np.linspace(70, 100, 10),
+        ]
+    )
+    close = pd.Series(values, index=pd.bdate_range("2024-01-01", periods=40))
+    events = analytics.drawdown_events(close, min_depth=0.05)
+
+    assert len(events) == 2
+    assert events.iloc[0]["Start"] > events.iloc[1]["Start"]
+    assert events["Depth"].le(-0.05).all()
+
+
+def test_drawdown_events_empty_when_no_drawdown():
+    monotonic = pd.Series(np.linspace(100, 200, 50), index=DAYS[:50])
+    assert analytics.drawdown_events(monotonic, min_depth=0.05).empty
+
+
+def test_annualized_volatility_matches_manual(close):
+    returns = analytics.daily_returns(close)
+    assert analytics.annualized_volatility(returns) == pytest.approx(
+        returns.std(ddof=1) * np.sqrt(252)
+    )
+
+
+def test_sortino_ignores_upside():
+    idx = DAYS[:100]
+    up = pd.Series(np.linspace(100, 200, 100), index=idx)
+    down = pd.Series(np.linspace(200, 100, 100), index=idx)
+    returns_up = analytics.daily_returns(up)
+    returns_down = analytics.daily_returns(down)
+    assert analytics.sortino_ratio(returns_up) > analytics.sortino_ratio(returns_down)
+
+
+def test_conditional_var_below_var(close):
+    returns = analytics.daily_returns(close)
+    assert analytics.conditional_var(returns) <= analytics.value_at_risk(returns)
+
+
+def test_rolling_volatility_length(close):
+    rv = analytics.rolling_volatility(analytics.daily_returns(close), window=20)
+    assert len(rv) == len(close) - 1
+    assert rv.iloc[:19].isna().all()
+    assert rv.iloc[19:].notna().all()
+
+
+def test_ema_follows_ewm(close):
+    np.testing.assert_allclose(
+        analytics.ema(close, span=50), close.ewm(span=50, adjust=False).mean()
+    )
+
+
 def test_period_returns_has_all_keys(close):
     pr = analytics.period_returns(close)
     assert set(pr) == {"1M", "3M", "6M", "1Y", "YTD"}

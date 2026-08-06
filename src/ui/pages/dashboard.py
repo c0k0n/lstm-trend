@@ -24,43 +24,6 @@ _GETTING_STARTED = """
    scores it against *repeat yesterday* and a 20-day moving average.
 """
 
-_WELCOME_DIALOG = """
-**Three things to try:**
-
-1. **Run a forecast** — pick a ticker in the sidebar and press *Run analysis*.
-2. **Deep-dive the data** — open *Analytics* or *Compare* for the same ticker.
-3. **Read the verdict** — *Findings* honestly compares the LSTM against the
-   simple baselines.
-"""
-
-
-def _page_links() -> None:
-    """Quick-navigation cards for first-time visitors."""
-    from .nav import get_pages
-
-    pages = get_pages()
-    st.markdown("#### 📖 New to the project? Jump to a page")
-    with st.container(horizontal=True):
-        st.page_link(pages["methodology"], label="Methodology", icon="📚")
-        st.page_link(pages["analytics"], label="Analytics", icon="📊")
-        st.page_link(pages["compare"], label="Compare", icon="⚖️")
-        st.page_link(pages["findings"], label="Findings", icon="🔬")
-
-
-def _show_welcome_dialog() -> None:
-    """One-time-per-session welcome dialog."""
-    if st.session_state.get("welcome_seen"):
-        return
-
-    @st.dialog("👋 Welcome to LSTM Trend", width="small")
-    def _welcome() -> None:
-        st.markdown(_WELCOME_DIALOG)
-        if st.button("Start exploring", type="primary", key="welcome_gotit"):
-            st.session_state["welcome_seen"] = True
-            st.rerun()
-
-    _welcome()
-
 
 def _apply_query_params() -> None:
     """Pre-fill the sidebar widgets from URL query params (once per session)."""
@@ -114,7 +77,6 @@ def render() -> None:
         page_title=f"Dashboard — {APP_TITLE} | LSTM stock price forecasting",
         page_icon="📈",
     )
-    _show_welcome_dialog()
     _apply_query_params()
 
     render_hero()
@@ -129,8 +91,6 @@ def render() -> None:
             "and the same numbers for the two baselines."
         )
 
-    st.space("medium")
-    _page_links()
     st.space("medium")
 
     params = render_sidebar_config()

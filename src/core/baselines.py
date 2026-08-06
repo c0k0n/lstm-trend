@@ -1,5 +1,7 @@
 """Simple benchmark forecasts used to put the LSTM results into perspective."""
 
+from typing import cast
+
 import pandas as pd
 
 from .metrics import regression_metrics
@@ -22,10 +24,8 @@ def moving_average_forecast(
 ) -> pd.Series:
     """Predict each test day's price as the mean of the previous `window` closes."""
     test_index = close.index[test_start_index:]
-    values = []
-    for i in range(test_start_index, len(close)):
-        values.append(close.iloc[max(0, i - window) : i].mean())
-    return pd.Series(values, index=test_index)
+    values = cast(pd.Series, close.shift(1).rolling(window, min_periods=1).mean())
+    return values.iloc[test_start_index:].set_axis(test_index)
 
 
 def baseline_forecasts(

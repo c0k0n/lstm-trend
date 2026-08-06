@@ -20,10 +20,10 @@ def regression_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, floa
     y_true = np.asarray(y_true).flatten()
     y_pred = np.asarray(y_pred).flatten()
 
-    rmse = float(np.sqrt(mean_squared_error(y_true, y_pred)))
+    mse = float(mean_squared_error(y_true, y_pred))
     return {
-        "mse": float(mean_squared_error(y_true, y_pred)),
-        "rmse": rmse,
+        "mse": mse,
+        "rmse": float(np.sqrt(mse)),
         "mae": float(mean_absolute_error(y_true, y_pred)),
         "mape": float(mean_absolute_percentage_error(y_true, y_pred)),
         "r2": float(r2_score(y_true, y_pred)),

@@ -50,9 +50,9 @@ def train_model(
     validation_split: float,
     patience: int,
     progress_callback: ProgressReporterCallback | None = None,
-):
+) -> keras_callbacks.History:
     """Train the model with early stopping and an optional progress callback."""
-    callbacks: list = []
+    callbacks: list[keras_callbacks.Callback] = []
     if progress_callback is not None:
         callbacks.append(progress_callback)
     callbacks.append(
@@ -68,7 +68,7 @@ def train_model(
         batch_size=batch_size,
         validation_split=validation_split,
         callbacks=callbacks,
-        verbose=0,
+        verbose="0",
     )
 
 
@@ -79,7 +79,7 @@ def predict_on_test(
     scaler: MinMaxScaler,
 ) -> pd.DataFrame:
     """Return a DataFrame of actual vs predicted test prices (original scale)."""
-    predictions = scaler.inverse_transform(model.predict(x_test, verbose=0))
+    predictions = scaler.inverse_transform(model.predict(x_test, verbose="0"))
     actual = scaler.inverse_transform(y_test.reshape(-1, 1))
     return pd.DataFrame(
         {"actual": actual.flatten(), "predicted": predictions.flatten()}
@@ -103,7 +103,7 @@ def make_future_predictions(
     predicted = []
 
     for _ in range(future_steps):
-        next_step = model.predict(current, verbose=0)[0, 0]
+        next_step = model.predict(current, verbose="0")[0, 0]
         predicted.append(next_step)
         current = np.append(current[:, 1:, :], [[[next_step]]], axis=1)
 

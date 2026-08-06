@@ -1,6 +1,6 @@
 """LSTM Trend — multipage Streamlit entry point.
 
-Run with:  ./run.sh   (or: uv run streamlit run streamlit_app.py)
+Run with:  uv run streamlit run streamlit_app.py
 """
 
 import os

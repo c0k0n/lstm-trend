@@ -1,25 +1,81 @@
-"""AppTest end-to-end tests for the Streamlit app (network access required)."""
+"""AppTest end-to-end tests for the Streamlit app.
+
+The data layer is swapped for deterministic synthetic OHLCV data and the
+training run is shrunk to one epoch, so the whole suite is fast, offline and
+reproducible — no Yahoo Finance, no long training waits.
+"""
 
 import importlib.util
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
 import pytest
 import streamlit as st
 from streamlit.testing.v1 import AppTest
 
+import src.core.data_loader as data_loader
+import src.core.pipeline as pipeline
+import src.ui.components as components
+import src.ui.pages.analytics as analytics_page
+import src.ui.pages.compare as compare_page
 from src.constants import GITHUB_URL
 
 APP_PATH = Path(__file__).resolve().parent.parent / "streamlit_app.py"
 
 
+def make_synthetic_close(n: int = 400, seed: int = 11) -> pd.DataFrame:
+    """A plausible OHLCV frame with a gentle uptrend — no network needed."""
+    rng = np.random.default_rng(seed)
+    drift = np.linspace(100.0, 160.0, n)
+    noise = rng.normal(0, 1.5, n)
+    index = pd.bdate_range("2024-01-01", periods=n)
+    return pd.DataFrame(
+        {
+            "Open": drift + noise,
+            "High": drift + noise + 2.0,
+            "Low": drift + noise - 2.0,
+            "Close": drift + noise,
+            "Volume": rng.integers(1_000_000, 5_000_000, n).astype("int64"),
+        },
+        index=index,
+    )
+
+
+def _fake_download(*args, **kwargs) -> pd.DataFrame:
+    return make_synthetic_close()
+
+
 @pytest.fixture()
-def app():
+def app(monkeypatch):
+    # Patch every binding of the download path so no test touches the network.
+    monkeypatch.setattr(data_loader, "download_stock_data", _fake_download)
+    monkeypatch.setattr(pipeline, "download_stock_data", _fake_download)
+    monkeypatch.setattr(components, "download_stock_data", _fake_download)
+    monkeypatch.setattr(analytics_page, "load_data_cached", _fake_download)
+    monkeypatch.setattr(compare_page, "load_data_cached", _fake_download)
+
     at = AppTest.from_file(str(APP_PATH), default_timeout=600)
     at.run()
     return at
 
 
+def _apply_settings(at: AppTest, **widget_values) -> None:
+    """Set sidebar model settings and submit the form (triggers one rerun)."""
+    for key, value in widget_values.items():
+        if key == "batch_size":
+            at.sidebar.select_slider(key=key).set_value(value)
+        elif key == "horizon_preset":
+            at.segmented_control(key=key).set_value(value)
+        else:
+            at.sidebar.slider(key=key).set_value(value)
+    apply = next(b for b in at.sidebar.button if b.label == "Apply model settings")
+    apply.click().run()
+
+
 def _click_run(at: AppTest) -> None:
+    """Apply fast training settings, then run the analysis."""
+    _apply_settings(at, seq_len=10, epochs=1, batch_size=128)
     run_button = next(b for b in at.sidebar.button if "Run analysis" in b.label)
     run_button.click().run()
 
@@ -154,13 +210,7 @@ def test_findings_verdict_feedback(app):
 
 @pytest.mark.e2e
 def test_horizon_form_apply_reflected_in_url(app):
-    horizon = next(
-        s for s in app.segmented_control if s.label == "Forecast horizon (days)"
-    )
-    horizon.set_value(30)
-    submit = next(b for b in app.sidebar.button if b.label == "Apply model settings")
-    submit.click().run()
-    assert not app.exception
+    _apply_settings(at=app, seq_len=10, epochs=1, batch_size=128, horizon_preset=30)
     _click_run(app)
     assert not app.exception
     assert app.query_params["horizon"] == ["30"]

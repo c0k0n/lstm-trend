@@ -22,8 +22,7 @@ def create_sequences(
     if len(data) <= sequence_length:
         return None
 
-    x = np.stack(
-        [data[i - sequence_length : i, 0] for i in range(sequence_length, len(data))]
-    )
-    y = np.array([data[i, 0] for i in range(sequence_length, len(data))])
-    return x.reshape(x.shape[0], sequence_length, 1), y.reshape(-1, 1)
+    windows = np.lib.stride_tricks.sliding_window_view(data, (sequence_length, 1))
+    x = windows[:-1, 0]
+    y = data[sequence_length:, 0].reshape(-1, 1)
+    return x, y

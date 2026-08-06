@@ -25,7 +25,14 @@ _DARK_THEME = dict(
     actual=COLOR_ACTUAL,
 )
 
-_PALETTE = ("#4FB477", "#64B5F6", "#FFA726", "#AB47BC", "#EF5350", "#26A69A")
+_PALETTE = (
+    COLOR_PREDICTED,
+    COLOR_NAIVE,
+    COLOR_FUTURE,
+    COLOR_MA,
+    "#EF5350",
+    "#26A69A",
+)
 
 
 def _with_alpha(hex_color: str, alpha: float) -> str:
@@ -232,6 +239,11 @@ def plot_baseline_comparison(result) -> go.Figure:
 
 def plot_metric_bars(result) -> go.Figure:
     """Horizontal bar chart of RMSE per method."""
+    color_by_method = {
+        "LSTM": COLOR_PREDICTED,
+        NAIVE: COLOR_NAIVE,
+        MOVING_AVERAGE: COLOR_MA,
+    }
     rows = [
         {"Method": "LSTM", "RMSE": result.lstm_metrics["rmse"]},
         *[
@@ -245,7 +257,7 @@ def plot_metric_bars(result) -> go.Figure:
             x=df["RMSE"],
             y=df["Method"],
             orientation="h",
-            marker=dict(color=[COLOR_PREDICTED, COLOR_NAIVE, COLOR_MA]),
+            marker=dict(color=[color_by_method[m] for m in df["Method"]]),
         )
     )
     fig.update_layout(

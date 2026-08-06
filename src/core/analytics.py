@@ -98,9 +98,8 @@ def period_returns(close: pd.Series) -> dict[str, float]:
     last_date = cast(pd.Timestamp, close.index[-1])
     today = close.iloc[-1]
     out: dict[str, float] = {}
-    for label, days in (("1M", 21), ("3M", 63), ("6M", 126), ("1Y", 252)):
-        lookback = int(days * 1.4)
-        past = cast(float, close.asof(last_date - pd.Timedelta(days=lookback)))
+    for label, bdays in (("1M", 21), ("3M", 63), ("6M", 126), ("1Y", 252)):
+        past = cast(float, close.asof(last_date - pd.offsets.BDay(bdays)))
         out[label] = float((today / past - 1) * 100) if not np.isnan(past) else np.nan
 
     year_start = cast(
@@ -146,7 +145,8 @@ def drawdown_events(close: pd.Series, min_depth: float = 0.05) -> pd.DataFrame:
                         "Duration (days)": (idx - start).days,
                     }
                 )
-        in_dd = False
+                in_dd = False
+                start, trough, trough_val = None, None, 0.0
     if in_dd and start is not None and trough is not None:
         last_index = cast(pd.Timestamp, close.index[-1])
         events.append(
@@ -239,6 +239,7 @@ def monthly_returns_matrix(close: pd.Series) -> pd.DataFrame:
     df["year"] = dt.dt.year.values
     df["month"] = dt.dt.month.values
     pivot = df.pivot(index="year", columns="month", values="return")
+    pivot = pivot.reindex(columns=range(1, 13))
     pivot.columns = [
         "Jan",
         "Feb",

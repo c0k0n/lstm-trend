@@ -86,8 +86,9 @@ def render() -> None:
         )
     with st.expander("How do I run this on my own machine?"):
         st.markdown(
-            "Clone the repo, `uv sync`, `./run.sh`. The quick start below has "
-            "the commands. Python 3.13 and uv are the only prerequisites."
+            "Clone the repo, `uv sync`, `uv run streamlit run streamlit_app.py`. "
+            "The quick start below has the commands. Python 3.13 and uv are the "
+            "only prerequisites."
         )
 
     st.header("Tech stack")
@@ -123,7 +124,7 @@ def render() -> None:
         """git clone git@github.com:c0k0n/lstm-trend.git
 cd lstm-trend
 uv sync            # create the environment (takes a while the first time)
-./run.sh           # start the app on http://localhost:8501""",
+uv run streamlit run streamlit_app.py   # start the app on http://localhost:8501""",
         language="bash",
     )
 

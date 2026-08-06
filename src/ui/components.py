@@ -4,6 +4,7 @@ import datetime
 from functools import lru_cache
 from typing import Any
 
+import pandas as pd
 import streamlit as st
 
 from ..constants import (
@@ -24,7 +25,9 @@ SESSION_KEY = "analysis"
 
 
 @st.cache_data(ttl=3600, show_spinner="Downloading market data…")
-def load_data_cached(symbol: str, start: datetime.date, end: datetime.date) -> Any:
+def load_data_cached(
+    symbol: str, start: datetime.date, end: datetime.date
+) -> pd.DataFrame | None:
     """Downloaded OHLCV data, cached for an hour (yfinance rate limits)."""
     return download_stock_data(symbol, start, end)
 
@@ -247,6 +250,7 @@ def render_forecast_table(result: AnalysisResult) -> None:
             "change_pct": "Day-over-day",
         }
     )
+    table["Day-over-day"] = table["Day-over-day"].fillna("—")
     with st.container(height=480):
         st.dataframe(
             table,

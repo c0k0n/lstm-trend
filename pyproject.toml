@@ -26,6 +26,7 @@ dev = [
 package = false
 
 [tool.pytest.ini_options]
+pythonpath = ["."]
 markers = [
     "e2e: end-to-end AppTest tests that exercise the live Streamlit app",
 ]

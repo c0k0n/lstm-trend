@@ -90,11 +90,13 @@ In plain words:
 
 **Model**
 
-- LSTM built with Keras' Functional API: two LSTM layers with dropout in
-  between, a dense layer, and an output layer.
+- LSTM built with Keras' Functional API: two LSTM layers (100 then 50 units)
+  with dropout after each, a dense layer, and an output layer — compiled with
+  Adam and mean absolute error.
 - Prices are scaled to 0–1 before training (MinMaxScaler), and predictions are
   scaled back to real prices afterwards.
-- Early stopping with patience, seeded for reproducible runs.
+- Early stopping (patience 10) with `restore_best_weights`, and every run is
+  seeded (`keras.utils.set_random_seed`) so results are reproducible.
 - A live progress bar and epoch-by-epoch loss readout while training.
 
 **Evaluation**
@@ -128,9 +130,8 @@ In plain words:
 - Loading states everywhere: skeletons while data downloads, a streaming
   verdict on the Findings page, a live "analysis run at …" age indicator that
   refreshes itself, and a one-time confetti celebration after the first run.
-- A welcome dialog, a "how to read the charts" dialog, quick-navigation page
-  links for first-time visitors, and a theme-aware app footer with the GitHub
-  link.
+- A "how to read the charts" dialog on the Findings page and a theme-aware
+  app footer with the GitHub link.
 - Self-hosted Inter font, rounded widget corners, robots.txt and sitemap for
   the deployed site.
 
@@ -139,7 +140,8 @@ In plain words:
 - Performance snapshot: last close, YTD/1M/6M/1Y returns, 52-week range
   position, total return, CAGR, annualized volatility.
 - Risk metrics: Sharpe and Sortino ratios, max drawdown, historical VaR and
-  CVaR, positive-day ratio, full drawdown events table.
+  CVaR, positive-day ratio, full drawdown events table — paginated 10 rows at
+  a time, with a count caption.
 - Returns analysis: histogram with KDE, Q-Q plot vs normal, rolling
   volatility, autocorrelation, weekday effects, skewness/kurtosis.
 - Seasonality: year × month return heatmap, average return and hit rate by
@@ -161,7 +163,7 @@ In plain words:
 - Drawdown comparison, and a risk-vs-return scatter coloured by Sharpe ratio.
 - Side-by-side metrics table (total return, CAGR, volatility, Sharpe, Sortino,
   max drawdown, VaR, CVaR, positive days) with CSV download. Each row carries
-  a sparkline of the price trend, and long drawdown lists are paginated.
+  a sparkline of the price trend.
 - An editable watchlist (add/remove tickers in the Compare page) that feeds
   the comparison when enabled.
 
@@ -216,12 +218,12 @@ A few details worth knowing:
   only seeing the most recent value. That makes it a natural fit for time
   series — but as with any model, it only learns patterns that exist in the
   training data.
-- **A quiet terminal.** On GPU machines, PyTorch's cuDNN LSTM path prints a
-  "weights are not contiguous" hint on every forward pass; it is a
-  performance note we can't act on (Keras calls the functional PyTorch API),
-  so it is filtered out in `src/core/lstm_model.py`. The test suite silences
-  the same warning plus two PyTorch deprecation hints via `filterwarnings`
-  in `pyproject.toml`.
+- **A quiet terminal.** PyTorch's cuDNN LSTM path prints a "weights are not
+  contiguous" hint on every forward pass; it is a performance note we can't act
+  on (Keras calls the functional PyTorch API), so it is filtered out in
+  `src/core/lstm_model.py`. The test suite silences the same warning plus a
+  NumPy copy-keyword deprecation and a `torch.jit` deprecation hint via
+  `filterwarnings` in `pyproject.toml`.
 
 ## Project structure
 
@@ -247,12 +249,14 @@ lstm-trend/
 ├── tests/                    # pytest unit tests + AppTest E2E
 ├── .github/workflows/ci.yml  # CI: uv sync, check, format, unit tests
 ├── .devcontainer/devcontainer.json  # VS Code / Codespaces: uv + Python 3.13
+├── .python-version           # Pins Python 3.13 for uv
 ├── .streamlit/config.toml    # Dark theme, Inter font, static serving
 ├── static/                   # robots.txt, sitemap.xml, self-hosted Inter font
 ├── assets/logo.svg           # Sidebar logo
+├── AGENTS.md                 # Instructions for AI coding tools
+├── streamlitinfolinks.txt    # Index of official Streamlit docs links (dev reference)
 ├── pyproject.toml            # Project metadata + dependencies (uv)
 ├── uv.lock                   # Locked dependency versions
-├── run.sh                    # Launcher: sets KERAS_BACKEND, runs the app
 └── README.md                 # This file
 ```
 
@@ -278,7 +282,7 @@ cd lstm-trend
 uv sync
 
 # 3. Run the app
-./run.sh
+uv run streamlit run streamlit_app.py
 ```
 
 Your browser should open on `http://localhost:8501`. From there, pick a ticker,
@@ -306,37 +310,51 @@ its CUDA libraries inside its own wheels, which means:
 
 That's a deliberate change from the original TensorFlow setup, which needed
 CUDA libraries installed into the virtualenv plus an `LD_LIBRARY_PATH` export
-(`run.sh` used to do both). None of that is needed anymore.
+(a launcher script used to do both). None of that is needed anymore — the
+entry point sets `KERAS_BACKEND=torch` itself, so
+`uv run streamlit run streamlit_app.py` is all it takes (any pre-set
+`KERAS_BACKEND` value wins).
 
 ## Tests
 
 ```bash
-# Full suite (the e2e tests download live data from Yahoo Finance)
+# Everything, no network access needed — 127 tests in ~23 seconds
 uv run pytest tests -q
 
-# Unit tests only — no network access needed
+# Unit tests only (same thing, minus the AppTest end-to-end layer)
 uv run pytest tests -m "not e2e" -q
 ```
+
+The suite is fully offline and deterministic: the network is mocked (both the
+Yahoo Finance download and the Streamlit app's data layer), models train on
+tiny seeded synthetic series, and every test has a fixed random seed.
 
 The suite covers:
 
 - unit tests for scaling/sequence creation, metrics, and the baselines
   (`tests/test_preprocessing.py`, `test_metrics.py`, `test_baselines.py`),
-- a full suite for the analytics module: returns, risk metrics, drawdowns,
-  seasonality, stationarity, every technical indicator, and an edge case where
-  an entire weekday is missing from the data (`tests/test_analytics.py`),
+- a full suite for the analytics module: returns, risk metrics, drawdowns
+  (including multi-day episodes and empty cases), seasonality, stationarity,
+  every technical indicator, and an edge case where an entire weekday is
+  missing from the data (`tests/test_analytics.py`),
+- every Plotly chart builder rendered end-to-end plus regression tests on
+  trace names and colours (`tests/test_charts.py`),
+- the LSTM model itself: shape checks, training history, scaling inversion,
+  future-date generation (`tests/test_lstm_model.py`), the progress callback
+  (`tests/test_callbacks.py`), and the yfinance download layer including its
+  multi-level-column flattening and error handling (`tests/test_data_loader.py`),
 - a full pipeline test on synthetic data with a tiny model, including the
-  combined baseline-forecast frame (`tests/test_pipeline.py`),
-- AppTest end-to-end tests that boot the real app, click through a full
-  analysis (this one downloads live data from Yahoo Finance), and check the
-  Analytics, Compare and Findings pages — including the lazy tabs, the model
-  settings form, deep-link query params (preset and custom horizons), the
-  sidebar settings caption, the footer's GitHub link, and the verdict
-  feedback (`tests/test_app.py`).
+  combined baseline-forecast frame and a guard against too-little-data runs
+  (`tests/test_pipeline.py`),
+- AppTest end-to-end tests that boot the real app and click through a full
+  analysis (with the network mocked, so no live downloads): the Analytics,
+  Compare and Findings pages, lazy tabs, the model-settings form, deep-link
+  query params (preset and custom horizons), the sidebar settings caption,
+  the footer's GitHub link, and the verdict feedback (`tests/test_app.py`).
 
 The e2e tests are tagged `@pytest.mark.e2e` (registered in `pyproject.toml`
 so the run stays warning-free), and a few known-benchmark warnings from
-PyTorch/Keras are filtered out for the suite via `filterwarnings`.
+NumPy/PyTorch/Keras are filtered out for the suite via `filterwarnings`.
 
 CI runs on every push to `main` via GitHub Actions: `uv sync`, `uv check`
 (type-check), `uv format --check`, then the unit tests (`-m "not e2e"`).
@@ -376,7 +394,7 @@ Everything is controlled from the sidebar (inside popovers):
 | Lookback window         | Days of history the model sees per step | 10 – 120       | 60      |
 | Prediction horizon      | Business days to forecast ahead (preset or Custom) | 5 – 90 | 15  |
 | Epochs                  | Training passes over the data           | 1 – 100        | 50      |
-| Batch size              | Samples per training step               | 8 – 128        | 32      |
+| Batch size              | Samples per training step (preset steps) | 8 – 128       | 32      |
 
 The model settings only apply once **Apply model settings** is pressed; the
 date pickers take effect immediately. You can also deep-link any analysis:
@@ -412,6 +430,17 @@ the moving-average window, and the plot colours.
   leftover dependencies, deduplicated chart colours and page configuration,
   modernized the typing, rewrote the devcontainer for uv + Python 3.13, and
   grew the test suite with regression and end-to-end coverage.
+- **2026 — second quality pass.** Found and fixed the worst bug in the app: the
+  drawdown detector silently dropped every drawdown event (a 10-day −50% crash
+  reported "no drawdowns"). Also replaced magic calendar lookbacks with exact
+  business-day offsets, fixed mislabelled monthly-returns heatmap columns and
+  mismatched bar colours in the RMSE chart, made sequence creation zero-copy
+  and baselines vectorized, seeded every training run (the docs always claimed
+  it), added a minimum-data guard so tiny datasets fail with a friendly error
+  instead of a Keras crash, adapted to Keras 3.15's string `verbose` API and
+  pandas 3.0, deleted the now-redundant `run.sh`, and rewrote the end-to-end
+  tests to run fully offline against mocked data — 127 tests in ~23 seconds,
+  deterministic and network-free.
 
 The git history still contains all the earlier commits, if you ever want to see
 how it evolved.

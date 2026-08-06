@@ -77,3 +77,40 @@ def test_pipeline_error_on_empty_data(monkeypatch):
             epochs=2,
             batch_size=16,
         )
+
+
+def test_forecast_with_change_columns(fake_loader):
+    result = pipeline.run_analysis(
+        symbol="TEST",
+        start_date="2024-01-01",
+        end_date="2025-02-01",
+        sequence_length=10,
+        future_steps=5,
+        epochs=2,
+        batch_size=16,
+    )
+    frame = result.forecast_with_change
+    assert set(frame.columns) == {"date", "predicted_close", "change_pct"}
+    assert len(frame) == len(result.future)
+    np.testing.assert_allclose(
+        frame["change_pct"].iloc[1:].to_numpy(),
+        frame["predicted_close"].pct_change().iloc[1:].to_numpy() * 100,
+    )
+
+
+def test_pipeline_error_on_too_little_data(fake_loader, monkeypatch):
+    def tiny(*a, **k):
+        return make_synthetic_close(n=12)
+
+    monkeypatch.setattr(pipeline, "download_stock_data", tiny)
+
+    with pytest.raises(pipeline.PipelineError, match="too few to train"):
+        pipeline.run_analysis(
+            "TINY",
+            "2024-01-01",
+            "2025-01-01",
+            sequence_length=10,
+            future_steps=5,
+            epochs=1,
+            batch_size=16,
+        )
