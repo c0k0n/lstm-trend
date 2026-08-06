@@ -35,17 +35,16 @@ deep learning models actually behave on real-world time series data, so I built 
 small LSTM network that predicts stock prices and wrapped it in a Streamlit app
 so that anyone (including my examiners) could try it without touching code.
 
-The original code served its purpose, but a lot of things in it aged poorly —
-old library versions, deprecated APIs, and setup steps that assumed a very
-specific machine. So in 2026 I went back and rebuilt it:
+The project has kept growing since then:
 
-- the modelling stack moved to **Keras 3 on a PyTorch backend** — the same
+- the modelling stack now runs on **Keras 3 with a PyTorch backend** — the same
   model code, with CUDA support that just works instead of requiring a fragile
   `LD_LIBRARY_PATH` dance,
-- the app was rebuilt as a **multipage Streamlit app** (Dashboard, Findings,
-  Methodology, About) with a clean `core` / `ui` module split,
-- the dashboard now compares the LSTM against two simple baselines, so the
-  numbers have context,
+- the app grew into a **multipage tool**: a Dashboard for forecasting, an
+  Analytics page for deep exploratory analysis, a Compare page for multi-ticker
+  work, an empirical Findings page, and an About page,
+- the analysis is grounded in **baselines**, so the LSTM's numbers are always
+  shown next to 'repeat yesterday' and a moving average,
 - the project has a proper **test suite** (unit tests + AppTest end-to-end
   checks) wired into **GitHub Actions CI**,
 - everything runs on **uv** for a clean, reproducible environment.
@@ -107,7 +106,8 @@ In plain words:
 
 **Interface**
 
-- Four pages: Dashboard (run analyses, see charts and forecast), Findings
+- Six pages: Dashboard (run analyses, see charts and forecast), Analytics
+  (deep EDA of any ticker), Compare (multi-ticker analysis), Findings
   (metrics, baseline comparison, caveats), Methodology (pipeline diagram,
   architecture, hyperparameters), About (project story).
 - All controls live in the sidebar inside popovers: ticker (with suggestions),
@@ -115,6 +115,32 @@ In plain words:
 - Forecast table with formatted columns and a CSV download button.
 - Dark theme configured in `.streamlit/config.toml`, custom logo in the sidebar.
 - The training device (GPU or CPU) is shown in the sidebar.
+
+**Analytics (EDA)**
+
+- Performance snapshot: last close, YTD/1M/6M/1Y returns, 52-week range
+  position, total return, CAGR, annualized volatility.
+- Risk metrics: Sharpe and Sortino ratios, max drawdown, historical VaR and
+  CVaR, positive-day ratio, full drawdown events table.
+- Returns analysis: histogram with KDE, Q-Q plot vs normal, rolling
+  volatility, autocorrelation, weekday effects, skewness/kurtosis.
+- Seasonality: year × month return heatmap, average return and hit rate by
+  month and weekday.
+- Stationarity: Augmented Dickey–Fuller test on log prices with a plain-English
+  interpretation.
+- Technical indicators: SMA 20/50/200, EMA 50, golden/death cross markers,
+  RSI (14), MACD (12,26,9), Bollinger bands (20, 2σ), plus a human-readable
+  "current signals" summary.
+- Volume analysis: volume bars coloured by daily move, and a volume-vs-return
+  scatter.
+
+**Compare (multi-ticker)**
+
+- Normalized price chart (all tickers rebased to 100) and cumulative returns.
+- Correlation matrix of daily returns with a plain-English reading.
+- Drawdown comparison, and a risk-vs-return scatter coloured by Sharpe ratio.
+- Side-by-side metrics table (total return, CAGR, volatility, Sharpe, Sortino,
+  max drawdown, VaR, CVaR, positive days) with CSV download.
 
 ## Tech stack
 
@@ -126,6 +152,8 @@ In plain words:
 | pandas / numpy   | Data wrangling and numerical work                         |
 | Keras 3 + PyTorch| Building and training the LSTM model                      |
 | scikit-learn     | MinMaxScaler, MSE and R² metrics                          |
+| scipy            | Distributions, KDE, Q-Q plots, moments                    |
+| statsmodels      | Augmented Dickey–Fuller stationarity test                 |
 | Plotly           | Interactive charts                                        |
 | uv               | Environment and dependency management                     |
 | pytest           | Unit tests and Streamlit AppTest end-to-end tests         |
@@ -176,13 +204,14 @@ lstm-trend/
 │   │   ├── preprocessing.py  # Scaling and sequence creation
 │   │   ├── metrics.py        # MSE / RMSE / MAE / MAPE / R²
 │   │   ├── baselines.py      # Naive and moving-average baselines
+│   │   ├── analytics.py      # EDA: risk metrics, drawdowns, seasonality, indicators
 │   │   ├── callbacks.py      # Keras callback driving progress callbacks
 │   │   ├── lstm_model.py     # Model creation, training, forecasting
 │   │   └── pipeline.py       # run_analysis(): the whole pipeline, typed
 │   └── ui/                   # Streamlit-specific rendering
 │       ├── charts.py         # All Plotly chart builders
 │       ├── components.py     # Sidebar config, progress UI, result rendering
-│       └── pages/            # dashboard, findings, methodology, about
+│       └── pages/            # dashboard, analytics, compare, findings, methodology, about
 ├── tests/                    # pytest unit tests + AppTest E2E
 ├── .github/workflows/ci.yml  # CI: uv sync, check, format, pytest
 ├── .streamlit/config.toml    # Dark theme
@@ -252,11 +281,14 @@ The suite covers:
 
 - unit tests for scaling/sequence creation, metrics, and the baselines
   (`tests/test_preprocessing.py`, `test_metrics.py`, `test_baselines.py`),
+- a full suite for the analytics module: returns, risk metrics, drawdowns,
+  seasonality, stationarity, and every technical indicator
+  (`tests/test_analytics.py`),
 - a full pipeline test on synthetic data with a tiny model
   (`tests/test_pipeline.py`),
 - AppTest end-to-end tests that boot the real app, click through a full
   analysis (this one downloads live data from Yahoo Finance), and check the
-  Findings page (`tests/test_app.py`).
+  Analytics, Compare and Findings pages (`tests/test_app.py`).
 
 CI runs on every push to `main` via GitHub Actions: `uv sync`, `uv check`
 (type-check), `uv format --check`, then `pytest`.
@@ -304,19 +336,20 @@ the moving-average window, and the plot colours.
 
 ## Project history
 
-- **2023 — original FYP build.** First version of the app: Streamlit, Keras
-  LSTM, a few notebooks worth of trial and error, and a README that was mostly
-  notes to myself.
-- **2026 — rejuvenation.** Moved to uv with a proper `pyproject.toml` and lock
-  file, updated every dependency to a current version, replaced deprecated
-  Streamlit API calls, and deployed the app publicly on Community Cloud.
-- **2026 — rebuild.** Migrated from TensorFlow to Keras 3 + PyTorch (GPU
-  support without the `LD_LIBRARY_PATH` hacks), restructured into a multipage
-  app with a clean `core`/`ui` split, added baseline comparisons and a proper
+- **2023 — FYP start.** First version of the app: Streamlit, Keras LSTM, a few
+  notebooks worth of trial and error, and a README that was mostly notes to
+  myself.
+- **2026 — continued development.** Moved to uv with a proper `pyproject.toml`
+  and lock file, updated every dependency to a current version, replaced
+  deprecated Streamlit API calls, and deployed the app publicly on Community
+  Cloud.
+- **2026 — latest chapters.** Migrated to Keras 3 + PyTorch (GPU support
+  without the `LD_LIBRARY_PATH` hacks), grew into a multipage app with deep
+  analytics and comparison pages, added baseline comparisons and an empirical
   Findings page, and introduced a test suite with GitHub Actions CI.
 
-The git history still contains the old commits, if you ever want to see how it
-evolved.
+The git history still contains all the earlier commits, if you ever want to see
+how it evolved.
 
 ## Honest limitations
 

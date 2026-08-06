@@ -16,10 +16,17 @@ from ..constants import (
     DEFAULT_SYMBOL,
     SUGGESTED_SYMBOLS,
 )
+from ..core.data_loader import download_stock_data
 from ..core.pipeline import AnalysisResult, PipelineError, run_analysis
 from . import charts
 
 SESSION_KEY = "analysis"
+
+
+@st.cache_data(ttl=3600, show_spinner="Downloading market data…")
+def load_data_cached(symbol: str, start: datetime.date, end: datetime.date) -> Any:
+    """Downloaded OHLCV data, cached for an hour (yfinance rate limits)."""
+    return download_stock_data(symbol, start, end)
 
 
 @lru_cache(maxsize=1)
@@ -221,8 +228,32 @@ def render_forecast_table(result: AnalysisResult) -> None:
     )
 
 
+def render_quick_stats(result: AnalysisResult) -> None:
+    """Quick context cards about the analysed ticker."""
+    from ..core import analytics
+
+    close = result.close
+    pr = analytics.period_returns(close)
+    pos = analytics.position_in_52w_range(close)
+
+    cols = st.columns(6)
+    cols[0].metric("Last close", f"${close.iloc[-1]:,.2f}")
+    cols[1].metric("YTD", f"{pr.get('YTD', float('nan')):+.2f}%")
+    cols[2].metric("1M", f"{pr.get('1M', float('nan')):+.2f}%")
+    cols[3].metric("6M", f"{pr.get('6M', float('nan')):+.2f}%")
+    cols[4].metric("1Y", f"{pr.get('1Y', float('nan')):+.2f}%")
+    cols[5].metric("52w range position", f"{pos:.0%}")
+
+
 def render_result(result: AnalysisResult) -> None:
     """Everything shown on the dashboard once an analysis exists."""
+    st.subheader("Market snapshot")
+    render_quick_stats(result)
+    st.plotly_chart(
+        charts.plot_candlestick(result.data),
+        width="stretch",
+    )
+
     st.subheader("Model performance")
     render_metrics(result)
     st.plotly_chart(charts.plot_loss_history(result.history), width="stretch")

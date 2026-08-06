@@ -49,3 +49,21 @@ def test_findings_page_shows_comparison(app):
 @pytest.mark.e2e
 def test_device_caption_present(app):
     assert any(c.value.startswith("Training device:") for c in app.sidebar.caption)
+
+
+@pytest.mark.e2e
+def test_analytics_page_renders(app):
+    app.switch_page("src/ui/pages/analytics.py").run()
+    assert not app.exception
+    assert any(t.value == "📊 Analytics" for t in app.title)
+    # Default ticker loads data and shows the overview tab
+    assert len(app.metric) > 0
+
+
+@pytest.mark.e2e
+def test_compare_page_renders(app):
+    app.switch_page("src/ui/pages/compare.py").run()
+    assert not app.exception
+    assert any(t.value == "⚖️ Compare" for t in app.title)
+    # Default three tickers produce a metrics table
+    assert len(app.dataframe) >= 1

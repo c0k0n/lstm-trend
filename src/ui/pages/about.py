@@ -10,7 +10,7 @@ def render() -> None:
 
     st.markdown(
         f"""
-        **{APP_TITLE}** started as a final year project in 2023: could a small
+        **{APP_TITLE}** started as my final year project in 2023: could a small
         LSTM network learn anything useful from raw stock closing prices, and
         could that be wrapped up in an app anyone can use without touching
         code?
@@ -19,11 +19,15 @@ def render() -> None:
         LSTM regularly beats 'repeat yesterday', but not always — and that
         honest ambiguity is exactly what makes it an interesting project.
 
-        In 2026 the project was rejuvenated end-to-end:
+        The project has kept growing since then:
 
-        - the modelling stack moved to **Keras 3 on a PyTorch backend**,
-        - the app was rebuilt as a **multipage Streamlit app** with an
-          empirical Findings page, a Methodology page, and polished UI,
+        - the modelling stack now runs on **Keras 3 with a PyTorch backend**
+          (same model code, proper GPU support),
+        - the app grew into a **multipage tool**: a Dashboard for forecasting,
+          an Analytics page for deep exploratory analysis, a Compare page for
+          multi-ticker work, an empirical Findings page, and this page,
+        - the analysis is grounded in **baselines** — every LSTM result is
+          shown next to 'repeat yesterday' and a moving average,
         - everything runs on **uv** with locked dependencies, unit and E2E
           tests, and GitHub Actions CI.
         """
@@ -37,6 +41,7 @@ def render() -> None:
                 "Deep learning",
                 "Backend",
                 "Data",
+                "Analytics",
                 "Charts",
                 "Environment",
                 "Testing",
@@ -46,6 +51,7 @@ def render() -> None:
                 "Keras 3 (LSTM)",
                 "PyTorch (torch.cuda optional)",
                 "Yahoo Finance via yfinance + pandas",
+                "scipy + statsmodels (statistics, ADF test, indicators)",
                 "Plotly (interactive dark-theme charts)",
                 "uv + uv.lock (Python 3.13)",
                 "pytest + Streamlit AppTest, GitHub Actions",

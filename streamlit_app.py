@@ -10,7 +10,14 @@ os.environ.setdefault("KERAS_BACKEND", "torch")
 import streamlit as st  # noqa: E402
 
 from src.constants import APP_TITLE, GITHUB_URL  # noqa: E402
-from src.ui.pages import about, dashboard, findings, methodology  # noqa: E402
+from src.ui.pages import (  # noqa: E402
+    about,
+    analytics,
+    compare,
+    dashboard,
+    findings,
+    methodology,
+)
 
 st.set_page_config(
     page_title=APP_TITLE,
@@ -33,6 +40,8 @@ pages = [
         url_path="dashboard",
         default=True,
     ),
+    st.Page(analytics.render, title="Analytics", icon="📊", url_path="analytics"),
+    st.Page(compare.render, title="Compare", icon="⚖️", url_path="compare"),
     st.Page(findings.render, title="Findings", icon="🔬", url_path="findings"),
     st.Page(methodology.render, title="Methodology", icon="📚", url_path="methodology"),
     st.Page(about.render, title="About", icon="🎓", url_path="about"),
