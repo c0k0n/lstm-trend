@@ -1,8 +1,10 @@
 """Dashboard page: run the analysis and explore the results."""
 
+import datetime
+
 import streamlit as st
 
-from ...constants import APP_TITLE
+from ...constants import APP_TITLE, SUGGESTED_SYMBOLS
 from ...core.pipeline import AnalysisResult
 from ..components import (
     get_analysis,
@@ -96,6 +98,48 @@ def _bottom_bar(params: dict) -> bool:
             return st.button("🚀 Run analysis", type="primary", key="run_button_bottom")
 
 
+def _apply_query_params() -> None:
+    """Pre-fill the sidebar widgets from URL query params (once per session)."""
+    if "query_params_applied" in st.session_state:
+        return
+    st.session_state["query_params_applied"] = True
+    qp = st.query_params
+
+    ticker = qp.get("ticker")
+    if ticker:
+        ticker = str(ticker).upper()
+        st.session_state["ticker_pills"] = (
+            ticker if ticker in SUGGESTED_SYMBOLS else "Custom…"
+        )
+        st.session_state["ticker_custom"] = ticker
+
+    start = qp.get("start")
+    if start:
+        try:
+            st.session_state["start_date"] = datetime.date.fromisoformat(str(start))
+        except ValueError:
+            pass
+
+    end = qp.get("end")
+    if end:
+        try:
+            st.session_state["end_date"] = datetime.date.fromisoformat(str(end))
+        except ValueError:
+            pass
+
+    horizon = qp.get("horizon")
+    if horizon and str(horizon).isdigit():
+        st.session_state["horizon_preset"] = int(str(horizon))
+
+
+def _write_query_params(params: dict) -> None:
+    """Persist the completed run as a shareable deep link."""
+    st.query_params["ticker"] = params["symbol"]
+    st.query_params["start"] = str(params["start_date"])
+    st.query_params["end"] = str(params["end_date"])
+    st.query_params["horizon"] = str(params["future_steps"])
+
+
 def render() -> None:
     st.set_page_config(
         page_title=f"Dashboard — {APP_TITLE} | LSTM stock price forecasting",
@@ -104,6 +148,7 @@ def render() -> None:
         initial_sidebar_state="expanded",
     )
     _show_welcome_dialog()
+    _apply_query_params()
 
     col_title, col_menu = st.columns([5, 1])
     with col_title:
@@ -153,6 +198,7 @@ def render() -> None:
     if result is None:
         return
 
+    _write_query_params(params)
     render_result(result)
 
 

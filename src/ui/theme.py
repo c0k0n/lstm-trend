@@ -43,9 +43,15 @@ hr { border-color: #E6EAF0; }
 
 def render_theme_toggle() -> bool:
     """Sidebar toggle that switches charts and the app chrome between themes."""
+    st.session_state.setdefault(_DARK_KEY, True)
+    if "theme_param_applied" not in st.session_state:
+        st.session_state["theme_param_applied"] = True
+        theme = st.query_params.get("theme")
+        if theme in {"light", "dark"}:
+            st.session_state[_DARK_KEY] = theme == "dark"
+
     dark = st.sidebar.toggle(
         "🌙 Dark mode",
-        value=True,
         key=_DARK_KEY,
         help="Switches the charts and app colours. Streamlit's Settings menu "
         "has an equivalent switch for widget theming.",

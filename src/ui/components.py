@@ -54,38 +54,45 @@ def render_sidebar_config() -> dict[str, Any]:
     st.sidebar.caption(f"Training device: {training_device()}")
 
     with st.sidebar.popover("⚙️ Model parameters", use_container_width=True):
-        sequence_length = st.slider(
-            "Lookback window (days)",
-            10,
-            120,
-            DEFAULT_SEQUENCE_LENGTH,
-            key="seq_len",
-            help="How many past days the model sees before predicting the next.",
-        )
-        future_steps = st.segmented_control(
-            "Forecast horizon (days)",
-            options=[5, 15, 30, "Custom…"],
-            default=DEFAULT_FUTURE_STEPS,
-            key="horizon_preset",
-            help="How many business days ahead to forecast. Pick a preset or "
-            "choose Custom… for any value between 5 and 90.",
-        )
-        if future_steps == "Custom…":
-            future_steps = st.slider(
-                "Prediction horizon (days)",
-                5,
-                90,
-                DEFAULT_FUTURE_STEPS,
-                key="fut_steps",
-                help="How many business days ahead to forecast.",
+        with st.form("model_settings_form"):
+            sequence_length = st.slider(
+                "Lookback window (days)",
+                10,
+                120,
+                DEFAULT_SEQUENCE_LENGTH,
+                key="seq_len",
+                help="How many past days the model sees before predicting the next.",
             )
-        epochs = st.slider("Training epochs", 1, 100, DEFAULT_EPOCHS, key="epochs")
-        batch_size = st.select_slider(
-            "Batch size",
-            options=[8, 16, 32, 64, 128],
-            value=DEFAULT_BATCH_SIZE,
-            key="batch_size",
-        )
+            st.session_state.setdefault("horizon_preset", DEFAULT_FUTURE_STEPS)
+            future_steps = st.segmented_control(
+                "Forecast horizon (days)",
+                options=[5, 15, 30, "Custom…"],
+                key="horizon_preset",
+                help="How many business days ahead to forecast. Pick a preset or "
+                "choose Custom… for any value between 5 and 90.",
+            )
+            if future_steps == "Custom…":
+                future_steps = st.slider(
+                    "Prediction horizon (days)",
+                    5,
+                    90,
+                    DEFAULT_FUTURE_STEPS,
+                    key="fut_steps",
+                    help="How many business days ahead to forecast.",
+                )
+            epochs = st.slider("Training epochs", 1, 100, DEFAULT_EPOCHS, key="epochs")
+            batch_size = st.select_slider(
+                "Batch size",
+                options=[8, 16, 32, 64, 128],
+                value=DEFAULT_BATCH_SIZE,
+                key="batch_size",
+            )
+            st.form_submit_button(
+                "Apply model settings",
+                width="stretch",
+                key="apply_model_settings",
+                help="Changes above only take effect after you press Apply.",
+            )
 
     symbol = _render_symbol_picker()
     col1, col2 = st.sidebar.columns(2)
@@ -105,11 +112,12 @@ def render_sidebar_config() -> dict[str, Any]:
 
 def _render_symbol_picker() -> str:
     """Quick-pick pills for popular tickers with a free-text fallback."""
+    st.session_state.setdefault("ticker_pills", DEFAULT_SYMBOL)
+    st.session_state.setdefault("ticker_custom", DEFAULT_SYMBOL)
     with st.sidebar.popover("📈 Choose a ticker", use_container_width=True):
         choice = st.pills(
             "Popular tickers",
             options=[*SUGGESTED_SYMBOLS, "Custom…"],
-            default=DEFAULT_SYMBOL,
             key="ticker_pills",
         )
         if choice is None:
@@ -117,7 +125,6 @@ def _render_symbol_picker() -> str:
         if choice == "Custom…":
             custom = st.text_input(
                 "Ticker symbol",
-                value=DEFAULT_SYMBOL,
                 key="ticker_custom",
                 help="e.g. AAPL, TSLA, ^GSPC, BTC-USD",
             )
@@ -284,6 +291,26 @@ def render_quick_stats(result: AnalysisResult) -> None:
     cols[5].metric("52w range position", f"{pos:.0%}")
 
 
+@st.fragment(run_every=60)
+def _analysis_age_caption(result: AnalysisResult) -> None:
+    """Live 'last run' caption; refreshes itself every minute."""
+    run_at = st.session_state.get(f"{SESSION_KEY}_run_at")
+    if run_at is None:
+        return
+    age = datetime.datetime.now() - run_at
+    if age.total_seconds() < 60:
+        when = "just now"
+    elif age.total_seconds() < 3600:
+        when = f"{int(age.total_seconds() // 60)} minutes ago"
+    else:
+        when = f"{age.total_seconds() / 3600:.1f} hours ago"
+    st.caption(
+        f"Analysis of **{result.symbol}** run at {run_at:%H:%M:%S} — {when}. "
+        "Baseline comparison and a full breakdown of the metrics live on the "
+        "**Findings** page."
+    )
+
+
 def render_result(result: AnalysisResult) -> None:
     """Everything shown on the dashboard once an analysis exists."""
     st.subheader("Market snapshot")
@@ -314,7 +341,4 @@ def render_result(result: AnalysisResult) -> None:
     st.space("medium")
     render_forecast_table(result)
     st.divider()
-    st.caption(
-        "Baseline comparison and a full breakdown of the metrics live on the "
-        "**Findings** page."
-    )
+    _analysis_age_caption(result)

@@ -15,6 +15,11 @@ def app():
     return at
 
 
+def _click_run(at: AppTest) -> None:
+    run_button = next(b for b in at.sidebar.button if "Run analysis" in b.label)
+    run_button.click().run()
+
+
 @pytest.mark.e2e
 def test_dashboard_renders(app):
     assert not app.exception
@@ -23,7 +28,7 @@ def test_dashboard_renders(app):
 
 @pytest.mark.e2e
 def test_run_full_analysis(app):
-    app.sidebar.button[0].click().run()
+    _click_run(app)
     assert not app.exception
     # Pipeline finished: final status visible, metrics rendered
     statuses = [s.label for s in app.status]
@@ -33,14 +38,14 @@ def test_run_full_analysis(app):
 
 @pytest.mark.e2e
 def test_forecast_table_and_download(app):
-    app.sidebar.button[0].click().run()
+    _click_run(app)
     assert not app.exception
     assert any(b.label.endswith("Download forecast (CSV)") for b in app.download_button)
 
 
 @pytest.mark.e2e
 def test_findings_page_shows_comparison(app):
-    app.sidebar.button[0].click().run()
+    _click_run(app)
     app.switch_page("src/ui/pages/findings.py").run()
     assert not app.exception
     assert any(h.value == "How the models compare" for h in app.subheader)
