@@ -18,6 +18,49 @@ METRIC_LABELS = {
 }
 
 
+def _actions_menu() -> None:
+    """Menu button that jumps between pages."""
+    from .nav import get_pages
+
+    pages = get_pages()
+    choices = {
+        "📈 Dashboard": pages["dashboard"],
+        "📊 Analytics": pages["analytics"],
+        "📚 Methodology": pages["methodology"],
+    }
+    choice = st.menu_button(
+        "Actions",
+        options=list(choices),
+        key="findings_menu",
+        help="Jump to another page of the app.",
+    )
+    if choice is not None:
+        st.session_state["findings_menu"] = None
+        st.switch_page(choices[choice])
+
+
+_CHARTS_GUIDE = """
+- **Test RMSE by method** — a bar chart of the same three numbers;
+  the shortest bar wins.
+- **LSTM vs baselines** — the three predicted curves over the test
+  window, overlaid on the actual prices. Look at where the curves
+  hug the actual line: that is what a good forecast looks like.
+  The moving average lags by construction — it is always a step
+  behind.
+"""
+
+
+def _charts_help_dialog() -> None:
+    """Modal explainer for the two charts above the verdict."""
+
+    @st.dialog("How to read the charts", width="small")
+    def _explain() -> None:
+        st.markdown(_CHARTS_GUIDE)
+
+    if st.button("💡 How to read the charts", key="charts_help_btn"):
+        _explain()
+
+
 def _metrics_table(result) -> pd.DataFrame:
     rows = [{"Method": "LSTM", **result.lstm_metrics}]
     for name, metrics in result.baselines.items():
@@ -45,15 +88,22 @@ def render() -> None:
             "page then shows everything without retraining."
         )
         if st.button("Go to Dashboard", type="primary"):
-            st.switch_page("src/ui/pages/dashboard.py")
+            from .nav import get_pages
+
+            st.switch_page(get_pages()["dashboard"])
         return
 
-    st.caption(
-        f"Based on the last analysis of **{result.symbol}** — "
-        f"{len(result.data)} daily rows, "
-        f"lookback {result.params['sequence_length']} days, "
-        f"epochs {result.params['epochs']}, batch {result.params['batch_size']}."
-    )
+    col_caption, col_actions = st.columns([5, 1])
+    with col_caption:
+        st.caption(
+            f"Based on the last analysis of **{result.symbol}** — "
+            f"{len(result.data)} daily rows, "
+            f"lookback {result.params['sequence_length']} days, "
+            f"epochs {result.params['epochs']}, batch {result.params['batch_size']}."
+        )
+    with col_actions:
+        _actions_menu()
+    st.space("small")
 
     test_data = result.data.iloc[result.test_start_index :]
     col1, col2, col3, col4 = st.columns(4)
@@ -98,6 +148,9 @@ def render() -> None:
 
     st.plotly_chart(charts.plot_metric_bars(result), width="stretch")
     st.plotly_chart(charts.plot_baseline_comparison(result), width="stretch")
+    st.space("small")
+    _charts_help_dialog()
+    st.space("small")
 
     st.subheader("What this actually means")
     lstm_rmse = result.lstm_metrics["rmse"]
@@ -137,19 +190,6 @@ def render() -> None:
             RMSE is the comparison metric because it is sensitive to the same
             kind of error you care about in a forecast: consistently missing
             the next move by a lot.
-            """
-        )
-
-    with st.expander("How to read the charts"):
-        st.markdown(
-            """
-            - **Test RMSE by method** — a bar chart of the same three numbers;
-              the shortest bar wins.
-            - **LSTM vs baselines** — the three predicted curves over the test
-              window, overlaid on the actual prices. Look at where the curves
-              hug the actual line: that is what a good forecast looks like.
-              The moving average lags by construction — it is always a step
-              behind.
             """
         )
 

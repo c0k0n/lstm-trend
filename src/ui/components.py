@@ -127,6 +127,7 @@ def render_hero() -> None:
         "An empirical study of LSTM forecasting on stock prices — built as a "
         "final year project. This is a learning tool, not investment advice."
     )
+    st.space("medium")
 
 
 def run_analysis_with_ui(params: dict[str, Any]) -> Optional[AnalysisResult]:
@@ -209,21 +210,23 @@ def render_forecast_table(result: AnalysisResult) -> None:
             "change_pct": "Day-over-day",
         }
     )
-    st.dataframe(
-        table,
-        column_config={
-            "Date": st.column_config.DateColumn("Date", format="DD MMM YYYY"),
-            "Predicted close": st.column_config.NumberColumn(
-                "Predicted close", format="$%.2f"
-            ),
-            "Day-over-day": st.column_config.NumberColumn(
-                "Day-over-day", format="%+.2f%%"
-            ),
-        },
-        hide_index=True,
-        width="stretch",
-    )
+    with st.container(height=480):
+        st.dataframe(
+            table,
+            column_config={
+                "Date": st.column_config.DateColumn("Date", format="DD MMM YYYY"),
+                "Predicted close": st.column_config.NumberColumn(
+                    "Predicted close", format="$%.2f"
+                ),
+                "Day-over-day": st.column_config.NumberColumn(
+                    "Day-over-day", format="%+.2f%%"
+                ),
+            },
+            hide_index=True,
+            width="stretch",
+        )
 
+    st.space("small")
     csv = table.to_csv(index=False).encode()
     st.download_button(
         "⬇️ Download forecast (CSV)",
@@ -255,14 +258,18 @@ def render_result(result: AnalysisResult) -> None:
     """Everything shown on the dashboard once an analysis exists."""
     st.subheader("Market snapshot")
     render_quick_stats(result)
+    st.space("small")
     st.plotly_chart(
         charts.plot_candlestick(result.data),
         width="stretch",
     )
 
+    st.space("medium")
     st.subheader("Model performance")
     render_metrics(result)
+    st.space("small")
     st.plotly_chart(charts.plot_loss_history(result.history), width="stretch")
+    st.space("small")
     st.plotly_chart(
         charts.plot_test_predictions(
             result.test_predictions,
@@ -272,7 +279,9 @@ def render_result(result: AnalysisResult) -> None:
         ),
         width="stretch",
     )
+    st.space("small")
     st.plotly_chart(charts.plot_forecast(result), width="stretch")
+    st.space("medium")
     render_forecast_table(result)
     st.divider()
     st.caption(

@@ -16,6 +16,7 @@ def render() -> None:
         "The story, the stack, a tour of the app and answers to the questions "
         "people actually ask about a stock-prediction project."
     )
+    st.space("medium")
 
     st.markdown(
         f"""

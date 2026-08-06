@@ -63,6 +63,7 @@ def render() -> None:
         "Put 2–6 tickers head to head: normalized prices, correlations, "
         "drawdowns, risk-vs-return trade-offs and a full metrics table."
     )
+    st.space("medium")
 
     symbols, start, end = _controls()
 

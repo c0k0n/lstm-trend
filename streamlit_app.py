@@ -10,14 +10,7 @@ os.environ.setdefault("KERAS_BACKEND", "torch")
 import streamlit as st  # noqa: E402
 
 from src.constants import APP_TITLE, GITHUB_URL  # noqa: E402
-from src.ui.pages import (  # noqa: E402
-    about,
-    analytics,
-    compare,
-    dashboard,
-    findings,
-    methodology,
-)
+from src.ui.pages.nav import get_pages  # noqa: E402
 from src.ui.theme import render_theme_toggle  # noqa: E402
 
 st.set_page_config(
@@ -35,19 +28,6 @@ st.logo(
 
 render_theme_toggle()
 
-pages = [
-    st.Page(
-        dashboard.render,
-        title="Dashboard",
-        icon="📈",
-        url_path="dashboard",
-        default=True,
-    ),
-    st.Page(analytics.render, title="Analytics", icon="📊", url_path="analytics"),
-    st.Page(compare.render, title="Compare", icon="⚖️", url_path="compare"),
-    st.Page(findings.render, title="Findings", icon="🔬", url_path="findings"),
-    st.Page(methodology.render, title="Methodology", icon="📚", url_path="methodology"),
-    st.Page(about.render, title="About", icon="🎓", url_path="about"),
-]
+pages = list(get_pages().values())
 
 st.navigation(pages, position="sidebar").run()

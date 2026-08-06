@@ -282,18 +282,24 @@ def render() -> None:
         f"{close.index[0].date()} → {close.index[-1].date()} · "
         f"range ${close.min():,.2f} – ${close.max():,.2f}"
     )
+    st.space("small")
 
-    tab_overview, tab_returns, tab_season, tab_tech, tab_risk = st.tabs(TABS)
-    with tab_overview:
-        _overview(data)
-    with tab_returns:
-        _returns(data)
-    with tab_season:
-        _seasonality(data)
-    with tab_tech:
-        _technicals(data)
-    with tab_risk:
-        _risk(data)
+    tabs = st.tabs(TABS, on_change="rerun")
+    with tabs[0]:
+        if tabs[0].open:
+            _overview(data)
+    with tabs[1]:
+        if tabs[1].open:
+            _returns(data)
+    with tabs[2]:
+        if tabs[2].open:
+            _seasonality(data)
+    with tabs[3]:
+        if tabs[3].open:
+            _technicals(data)
+    with tabs[4]:
+        if tabs[4].open:
+            _risk(data)
 
 
 if __name__ == "__main__":

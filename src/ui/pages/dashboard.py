@@ -22,6 +22,79 @@ _GETTING_STARTED = """
    scores it against *repeat yesterday* and a 20-day moving average.
 """
 
+_WELCOME_DIALOG = """
+**Three things to try:**
+
+1. **Run a forecast** — pick a ticker in the sidebar and press *Run analysis*.
+2. **Deep-dive the data** — open *Analytics* or *Compare* for the same ticker.
+3. **Read the verdict** — *Findings* honestly compares the LSTM against the
+   simple baselines.
+"""
+
+
+def _jump_menu() -> None:
+    """Menu button that jumps between pages."""
+    from .nav import get_pages
+
+    pages = get_pages()
+    choices = {
+        "📊 Analytics": pages["analytics"],
+        "⚖️ Compare": pages["compare"],
+        "🔬 Findings": pages["findings"],
+        "📚 Methodology": pages["methodology"],
+    }
+    choice = st.menu_button(
+        "More",
+        options=list(choices),
+        key="dash_menu",
+        help="Jump straight to another page of the app.",
+    )
+    if choice is not None:
+        st.session_state["dash_menu"] = None
+        st.switch_page(choices[choice])
+
+
+def _page_links() -> None:
+    """Quick-navigation cards for first-time visitors."""
+    from .nav import get_pages
+
+    pages = get_pages()
+    st.markdown("#### 📖 New to the project? Jump to a page")
+    with st.container(horizontal=True):
+        st.page_link(pages["methodology"], label="Methodology", icon="📚")
+        st.page_link(pages["analytics"], label="Analytics", icon="📊")
+        st.page_link(pages["compare"], label="Compare", icon="⚖️")
+        st.page_link(pages["findings"], label="Findings", icon="🔬")
+
+
+def _show_welcome_dialog() -> None:
+    """One-time-per-session welcome dialog."""
+    if st.session_state.get("welcome_seen"):
+        return
+
+    @st.dialog("👋 Welcome to LSTM Trend", width="small")
+    def _welcome() -> None:
+        st.markdown(_WELCOME_DIALOG)
+        if st.button("Start exploring", type="primary", key="welcome_gotit"):
+            st.session_state["welcome_seen"] = True
+            st.rerun()
+
+    _welcome()
+
+
+def _bottom_bar(params: dict) -> bool:
+    """Pinned bottom bar with a one-click rerun of the analysis."""
+    with st.bottom:
+        col1, col2 = st.columns([5, 1])
+        with col1:
+            st.caption(
+                f"Current settings: **{params['symbol']}** · "
+                f"{params['start_date']} → {params['end_date']} · "
+                f"horizon {params['future_steps']} days"
+            )
+        with col2:
+            return st.button("🚀 Run analysis", type="primary", key="run_button_bottom")
+
 
 def render() -> None:
     st.set_page_config(
@@ -30,7 +103,15 @@ def render() -> None:
         layout="wide",
         initial_sidebar_state="expanded",
     )
-    render_hero()
+    _show_welcome_dialog()
+
+    col_title, col_menu = st.columns([5, 1])
+    with col_title:
+        render_hero()
+    with col_menu:
+        st.space("large")
+        _jump_menu()
+    st.space("small")
 
     with st.container(border=True):
         st.markdown("#### 👋 Welcome — how this dashboard works")
@@ -41,24 +122,18 @@ def render() -> None:
             "and the same numbers for the two baselines."
         )
 
-    with st.expander("📖 New to the project? Start here"):
-        st.markdown(
-            """
-            - **Methodology** explains the pipeline, the architecture and every
-              hyperparameter behind the numbers.
-            - **Analytics** deep-dives into the same ticker: returns, risk
-              metrics, seasonality, technical indicators.
-            - **Compare** puts several tickers side by side.
-            - **Findings** tells you, honestly, whether the LSTM beat the
-              simple baselines — and when it didn't.
-            """
-        )
+    st.space("medium")
+    _page_links()
+    st.space("medium")
 
     params = render_sidebar_config()
 
-    if not st.sidebar.button(
+    sidebar_clicked = st.sidebar.button(
         "🚀 Run analysis", type="primary", width="stretch", key="run_button"
-    ):
+    )
+    bottom_clicked = _bottom_bar(params)
+
+    if not (sidebar_clicked or bottom_clicked):
         existing = get_analysis()
         if existing is not None:
             st.info(
