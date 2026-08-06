@@ -81,7 +81,8 @@ In plain words:
 
 - Closing price over time.
 - Trading volume over time.
-- Candlestick chart of open, high, low, and close.
+- Candlestick chart of open, high, low, and close — long date ranges are
+  automatically aggregated into weekly bars so the chart stays readable.
 - Training loss curves (training vs validation).
 - Test predictions against actual prices, with the forecasted future prices.
 - Bar chart of each model's RMSE, plus a full comparison chart of test
@@ -131,8 +132,8 @@ In plain words:
 - Technical indicators: SMA 20/50/200, EMA 50, golden/death cross markers,
   RSI (14), MACD (12,26,9), Bollinger bands (20, 2σ), plus a human-readable
   "current signals" summary.
-- Volume analysis: volume bars coloured by daily move, and a volume-vs-return
-  scatter.
+- Volume analysis: volume bars coloured by daily move (weekly bars on long
+  histories), and a volume-vs-return scatter.
 
 **Compare (multi-ticker)**
 
