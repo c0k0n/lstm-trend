@@ -75,6 +75,8 @@ def plot_candlestick(data: pd.DataFrame) -> go.Figure:
             low=df["Low"],
             close=df["Close"],
             name="OHLC",
+            increasing=dict(line=dict(width=1.5)),
+            decreasing=dict(line=dict(width=1.5)),
         )
     )
     title = "Candlestick chart (weekly bars)" if aggregated else "Candlestick chart"
@@ -603,11 +605,14 @@ def plot_volume_analysis(data: pd.DataFrame) -> go.Figure:
         aggregated = True
     ret = close.pct_change().fillna(0)
     colors = [COLOR_PREDICTED if v >= 0 else "#EF5350" for v in ret]
+    # Explicit bar width in milliseconds: one trading day, or five for weekly
+    bar_width = 5 * 86_400_000 if aggregated else 86_400_000
     fig = go.Figure()
     fig.add_trace(
         go.Bar(
             x=volume.index,
             y=volume.values,
+            width=bar_width,
             name="Volume",
             marker=dict(color=colors),
             opacity=0.7,
