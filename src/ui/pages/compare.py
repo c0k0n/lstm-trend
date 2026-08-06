@@ -5,7 +5,12 @@ import datetime
 import pandas as pd
 import streamlit as st
 
-from ...constants import DEFAULT_END_DATE, DEFAULT_START_DATE, SUGGESTED_SYMBOLS
+from ...constants import (
+    APP_TITLE,
+    DEFAULT_END_DATE,
+    DEFAULT_START_DATE,
+    SUGGESTED_SYMBOLS,
+)
 from .. import charts
 from ..components import load_data_cached
 
@@ -48,7 +53,16 @@ def _metrics_table(series: dict[str, pd.Series]) -> pd.DataFrame:
 
 
 def render() -> None:
+    st.set_page_config(
+        page_title=f"Compare — {APP_TITLE} | Multi-ticker side-by-side analysis",
+        page_icon="⚖️",
+        layout="wide",
+    )
     st.title("⚖️ Compare")
+    st.text(
+        "Put 2–6 tickers head to head: normalized prices, correlations, "
+        "drawdowns, risk-vs-return trade-offs and a full metrics table."
+    )
 
     symbols, start, end = _controls()
 

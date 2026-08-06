@@ -5,5 +5,12 @@ backgroundColor = "#0E1117"
 secondaryBackgroundColor = "#1A1E27"
 textColor = "#F0F2F6"
 
+# Light variant: users can switch via the Settings menu (or "Use system settings")
+[theme.light]
+primaryColor = "#1F8A55"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F2F4F7"
+textColor = "#31333F"
+
 [browser]
 gatherUsageStats = false

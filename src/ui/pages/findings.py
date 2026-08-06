@@ -5,6 +5,7 @@ import streamlit as st
 
 from ...core.baselines import MOVING_AVERAGE, NAIVE
 from ...core.metrics import METRIC_NAMES
+from ...constants import APP_TITLE
 from .. import charts
 from ..components import get_analysis
 
@@ -25,7 +26,17 @@ def _metrics_table(result) -> pd.DataFrame:
 
 
 def render() -> None:
+    st.set_page_config(
+        page_title=f"Findings — {APP_TITLE} | LSTM vs baselines",
+        page_icon="🔬",
+        layout="wide",
+    )
     st.title("🔬 Findings")
+    st.text(
+        "The empirical verdict: how the LSTM's test-window errors compare "
+        "with 'repeat yesterday' and a 20-day moving average — on the last "
+        "analysis you ran."
+    )
 
     result = get_analysis()
     if result is None:
@@ -40,7 +51,31 @@ def render() -> None:
     st.caption(
         f"Based on the last analysis of **{result.symbol}** — "
         f"{len(result.data)} daily rows, "
-        f"lookback {result.params['sequence_length']} days."
+        f"lookback {result.params['sequence_length']} days, "
+        f"epochs {result.params['epochs']}, batch {result.params['batch_size']}."
+    )
+
+    test_data = result.data.iloc[result.test_start_index :]
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric(
+        "Test window start",
+        str(test_data.index[0].date()),
+        help="First day of the held-out test period.",
+    )
+    col2.metric(
+        "Test window end",
+        str(test_data.index[-1].date()),
+        help="Last day of the held-out test period.",
+    )
+    col3.metric(
+        "Test days",
+        f"{len(test_data):,}",
+        help="Trading days the model was scored on (never seen in training).",
+    )
+    col4.metric(
+        "Test price range",
+        f"${test_data['Close'].min():,.2f} – ${test_data['Close'].max():,.2f}",
+        help="Where the price moved during the test window — context for the errors.",
     )
 
     st.subheader("How the models compare")
@@ -72,18 +107,51 @@ def render() -> None:
     if lstm_rmse < min(naive_rmse, ma_rmse):
         verdict = (
             f"The LSTM beat both baselines on this test window (RMSE "
-            f"${lstm_rmse:,.2f} vs ${naive_rmse:,.2f} naive and "
+            f"**${lstm_rmse:,.2f}** vs ${naive_rmse:,.2f} naive and "
             f"${ma_rmse:,.2f} moving average), so it did learn something "
             f"beyond 'repeat yesterday'."
         )
+        icon = "✅"
     else:
         verdict = (
             f"The LSTM did **not** beat the simpler baselines here "
-            f"(RMSE ${lstm_rmse:,.2f} vs ${min(naive_rmse, ma_rmse):,.2f}). "
+            f"(RMSE **${lstm_rmse:,.2f}** vs ${min(naive_rmse, ma_rmse):,.2f}). "
             f"That is a genuinely useful result too: it is a reminder that "
             f"stock prices are noisy and a simple rule is a strong opponent."
         )
-    st.markdown(verdict)
+        icon = "⚠️"
+    with st.container(border=True):
+        st.markdown(f"### {icon} Verdict")
+        st.markdown(verdict)
+
+    with st.expander("How to read the numbers"):
+        st.markdown(
+            """
+            | Metric | Lower is better? | What it actually tells you |
+            |---|---|---|
+            | **RMSE** | Yes | Average error in dollars, with big misses punished. The headline number for this comparison. |
+            | **MAE** | Yes | Average absolute error in dollars — easier to feel, ignores outliers. |
+            | **MAPE** | Yes | The error as a percentage of price, so different stocks can be compared. |
+            | **R²** | — | How much of the price variance the model explains. High on trending stocks, low on choppy ones. |
+
+            RMSE is the comparison metric because it is sensitive to the same
+            kind of error you care about in a forecast: consistently missing
+            the next move by a lot.
+            """
+        )
+
+    with st.expander("How to read the charts"):
+        st.markdown(
+            """
+            - **Test RMSE by method** — a bar chart of the same three numbers;
+              the shortest bar wins.
+            - **LSTM vs baselines** — the three predicted curves over the test
+              window, overlaid on the actual prices. Look at where the curves
+              hug the actual line: that is what a good forecast looks like.
+              The moving average lags by construction — it is always a step
+              behind.
+            """
+        )
 
     with st.expander("Read the caveats"):
         st.markdown(

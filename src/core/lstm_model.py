@@ -1,5 +1,6 @@
 """LSTM model definition, training, evaluation and step-wise forecasting."""
 
+import warnings
 from typing import Optional, Tuple
 
 import numpy as np
@@ -10,6 +11,16 @@ from sklearn.preprocessing import MinMaxScaler
 
 from .callbacks import ProgressReporterCallback
 from .metrics import regression_metrics
+
+# PyTorch's cuDNN LSTM path warns that Keras-built weights are not one
+# contiguous chunk of memory. We cannot call flatten_parameters() because
+# Keras invokes the functional torch._VF.lstm API, so the hint (which fires
+# on every GPU forward pass) is only noise — suppress it.
+warnings.filterwarnings(
+    "ignore",
+    message=r"RNN module weights are not part of single contiguous chunk of memory.*",
+    category=UserWarning,
+)
 
 
 def create_lstm_model(

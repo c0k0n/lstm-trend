@@ -95,14 +95,16 @@ def render_sidebar_config() -> dict[str, Any]:
 
 
 def _render_symbol_picker() -> str:
-    """A selectbox of popular tickers with a free-text fallback."""
+    """Quick-pick pills for popular tickers with a free-text fallback."""
     with st.sidebar.popover("📈 Choose a ticker", use_container_width=True):
-        choice = st.selectbox(
+        choice = st.pills(
             "Popular tickers",
             options=[*SUGGESTED_SYMBOLS, "Custom…"],
-            index=SUGGESTED_SYMBOLS.index(DEFAULT_SYMBOL),
-            key="ticker_choice",
+            default=DEFAULT_SYMBOL,
+            key="ticker_pills",
         )
+        if choice is None:
+            choice = DEFAULT_SYMBOL
         if choice == "Custom…":
             custom = st.text_input(
                 "Ticker symbol",
@@ -117,6 +119,10 @@ def _render_symbol_picker() -> str:
 def render_hero() -> None:
     """App title bar with the project positioning."""
     st.title("📈 LSTM Trend")
+    st.text(
+        "Train a small LSTM on a stock's closing prices, evaluate it against "
+        "simple baselines, and explore the forecast — all in your browser."
+    )
     st.caption(
         "An empirical study of LSTM forecasting on stock prices — built as a "
         "final year project. This is a learning tool, not investment advice."

@@ -2,21 +2,57 @@
 
 import streamlit as st
 
+from ...constants import APP_TITLE
 from ...core.pipeline import AnalysisResult
-from .. import charts
 from ..components import (
     get_analysis,
-    render_forecast_table,
     render_hero,
-    render_metrics,
     render_result,
     render_sidebar_config,
     run_analysis_with_ui,
 )
 
+_GETTING_STARTED = """
+1. **Pick a ticker** — use the quick picks or type any symbol in the sidebar.
+2. **Choose a date range** — more history means more training data, but longer
+   runs; the default (2020 → today) is a good balance.
+3. **Tune the model** — lookback window, horizon, epochs and batch size live in
+   *Model parameters*. The defaults are sane for a first run.
+4. **Hit *Run analysis*** — the pipeline downloads data, trains the LSTM, and
+   scores it against *repeat yesterday* and a 20-day moving average.
+"""
+
 
 def render() -> None:
+    st.set_page_config(
+        page_title=f"Dashboard — {APP_TITLE} | LSTM stock price forecasting",
+        page_icon="📈",
+        layout="wide",
+        initial_sidebar_state="expanded",
+    )
     render_hero()
+
+    with st.container(border=True):
+        st.markdown("#### 👋 Welcome — how this dashboard works")
+        st.markdown(_GETTING_STARTED)
+        st.markdown(
+            "**You'll get back:** a market snapshot, training curves, the test "
+            "window actual-vs-predicted, the forecast table (with CSV download), "
+            "and the same numbers for the two baselines."
+        )
+
+    with st.expander("📖 New to the project? Start here"):
+        st.markdown(
+            """
+            - **Methodology** explains the pipeline, the architecture and every
+              hyperparameter behind the numbers.
+            - **Analytics** deep-dives into the same ticker: returns, risk
+              metrics, seasonality, technical indicators.
+            - **Compare** puts several tickers side by side.
+            - **Findings** tells you, honestly, whether the LSTM beat the
+              simple baselines — and when it didn't.
+            """
+        )
 
     params = render_sidebar_config()
 

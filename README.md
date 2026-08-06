@@ -115,6 +115,9 @@ In plain words:
   dates, lookback window, prediction horizon, epochs, and batch size.
 - Forecast table with formatted columns and a CSV download button.
 - Dark theme configured in `.streamlit/config.toml`, custom logo in the sidebar.
+- Light/dark mode: the whole app switches between the two themes from
+  Streamlit's Settings menu, and a sidebar toggle flips the charts (and the
+  app chrome) without a restart.
 - The training device (GPU or CPU) is shown in the sidebar.
 
 **Analytics (EDA)**
@@ -192,6 +195,10 @@ A few details worth knowing:
   only seeing the most recent value. That makes it a natural fit for time
   series — but as with any model, it only learns patterns that exist in the
   training data.
+- **A quiet terminal.** On GPU machines, PyTorch's cuDNN LSTM path prints a
+  "weights are not contiguous" hint on every forward pass; it is a
+  performance note we can't act on (Keras calls the functional PyTorch API),
+  so it is filtered out in `src/core/lstm_model.py`.
 
 ## Project structure
 

@@ -6,7 +6,16 @@ from ...constants import APP_TITLE, GITHUB_URL, LIVE_APP_URL
 
 
 def render() -> None:
+    st.set_page_config(
+        page_title=f"About — {APP_TITLE} | Project story, stack and FAQ",
+        page_icon="🎓",
+        layout="wide",
+    )
     st.title("🎓 About this project")
+    st.text(
+        "The story, the stack, a tour of the app and answers to the questions "
+        "people actually ask about a stock-prediction project."
+    )
 
     st.markdown(
         f"""
@@ -33,6 +42,54 @@ def render() -> None:
         """
     )
 
+    st.header("A tour of the app")
+    st.markdown(
+        """
+        | Page | What you'll find there |
+        |---|---|
+        | **📈 Dashboard** | Run the pipeline: data → train → evaluate → forecast. Market snapshot, training curves, forecast table with CSV download. |
+        | **📊 Analytics** | Deep EDA of any ticker: returns, risk metrics (Sharpe, drawdowns, VaR), seasonality, stationarity, technical indicators, volume analysis. |
+        | **⚖️ Compare** | Several tickers side by side: normalized prices, correlations, drawdowns, risk-vs-return scatter, metrics table. |
+        | **🔬 Findings** | The honest verdict: LSTM vs naive vs moving average on the last analysis, with test-window context. |
+        | **📚 Methodology** | The full technical story: pipeline, architecture, hyperparameters, design trade-offs, references. |
+        | **🎓 About** | You are here. |
+        """
+    )
+
+    st.header("Frequently asked questions")
+    with st.expander("Is this investment advice?"):
+        st.markdown(
+            "No. It is a learning project. Markets are noisy and driven by "
+            "news, sentiment and policy that no price history can tell a "
+            "model. Treat every forecast as an experiment, not a tip."
+        )
+    with st.expander("Why an LSTM, and not a Transformer or XGBoost?"):
+        st.markdown(
+            "An LSTM is the classic recurrent architecture for sequences, it "
+            "trains fast on tiny data, and it keeps the project readable for "
+            "an examiner. Transformers would overfit a few thousand prices; "
+            "the trade-offs table on the Methodology page says more."
+        )
+    with st.expander("Why does the app retrain on every run?"):
+        st.markdown(
+            "Nothing is persisted between sessions — every run downloads "
+            "fresh data and trains from scratch. That keeps the app simple "
+            "and honest (no stale model), at the cost of a wait each time. "
+            "Saving models is on the ideas list."
+        )
+    with st.expander("Why show baselines? Doesn't that make the LSTM look bad?"):
+        st.markdown(
+            "Sometimes it does — and that is exactly the point. A model is "
+            "only worth its complexity if it beats a simple rule. Showing the "
+            "naive and moving-average baselines next to every LSTM number is "
+            "what keeps the project honest."
+        )
+    with st.expander("How do I run this on my own machine?"):
+        st.markdown(
+            "Clone the repo, `uv sync`, `./run.sh`. The quick start below has "
+            "the commands. Python 3.13 and uv are the only prerequisites."
+        )
+
     st.header("Tech stack")
     st.dataframe(
         {
@@ -52,7 +109,7 @@ def render() -> None:
                 "PyTorch (torch.cuda optional)",
                 "Yahoo Finance via yfinance + pandas",
                 "scipy + statsmodels (statistics, ADF test, indicators)",
-                "Plotly (interactive dark-theme charts)",
+                "Plotly (interactive theme-aware charts)",
                 "uv + uv.lock (Python 3.13)",
                 "pytest + Streamlit AppTest, GitHub Actions",
             ],
@@ -82,6 +139,21 @@ uv sync            # create the environment (takes a while the first time)
         forecasts it produces should not be used to make financial decisions.
         Markets are efficient and noisy; a model trained on closing prices
         alone is not a trading strategy.
+        """
+    )
+
+    st.header("Acknowledgements")
+    st.markdown(
+        """
+        - **Hochreiter & Schmidhuber (1997)** — the LSTM paper that started
+          it all. *Neural Computation* 9(8).
+        - **Keras 3** — the multi-backend framework the model is written in.
+        - **PyTorch** — the backend that makes GPU training just work.
+        - **Streamlit** — the framework this whole app is built with.
+        - **Yahoo Finance / `yfinance`** — free market data.
+        - Every examiner, visitor and reader who pressed *Run analysis* and
+          asked the obvious question: *"but does it beat just predicting "
+          "yesterday?"* — that question shaped this project.
         """
     )
 

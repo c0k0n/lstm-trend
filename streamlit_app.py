@@ -18,6 +18,7 @@ from src.ui.pages import (  # noqa: E402
     findings,
     methodology,
 )
+from src.ui.theme import render_theme_toggle  # noqa: E402
 
 st.set_page_config(
     page_title=APP_TITLE,
@@ -31,6 +32,8 @@ st.logo(
     icon_image="assets/logo.svg",
     link=GITHUB_URL,
 )
+
+render_theme_toggle()
 
 pages = [
     st.Page(

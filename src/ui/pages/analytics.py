@@ -6,6 +6,7 @@ import pandas as pd
 import streamlit as st
 
 from ...constants import (
+    APP_TITLE,
     DEFAULT_END_DATE,
     DEFAULT_START_DATE,
     DEFAULT_SYMBOL,
@@ -249,7 +250,17 @@ def _risk(data: pd.DataFrame) -> None:
 
 
 def render() -> None:
+    st.set_page_config(
+        page_title=f"Analytics — {APP_TITLE} | Stock EDA, risk metrics and indicators",
+        page_icon="📊",
+        layout="wide",
+    )
     st.title("📊 Analytics")
+    st.text(
+        "Exploratory analysis for one ticker: returns and risk metrics, "
+        "seasonality, stationarity, technical indicators and volume — "
+        "no model training required."
+    )
 
     symbol, start, end = _controls()
 

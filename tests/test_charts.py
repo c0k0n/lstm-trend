@@ -50,3 +50,21 @@ def test_candlestick_stays_daily_on_short_history():
     fig = charts.plot_candlestick(data)
     assert len(fig.data[0].x) == 100
     assert "weekly" not in fig.layout.title.text
+
+
+def test_light_theme_switches_plotly_styling():
+    charts.set_dark(False)
+    try:
+        data = make_data(100)
+        fig = charts.plot_close(data["Close"])
+        assert fig.layout.font.color == "#31333F"
+        predictions = pd.DataFrame(
+            {"actual": data["Close"].values, "predicted": data["Close"].values}
+        )
+        fig = charts.plot_test_predictions(predictions, data["Close"], 50, 30)
+        actual = next(tr for tr in fig.data if tr.name == "Actual (test)")
+        assert actual.line.color == "#31333F"
+    finally:
+        charts.set_dark(True)
+    fig = charts.plot_close(data["Close"])
+    assert fig.layout.font.color == "#F0F2F6"

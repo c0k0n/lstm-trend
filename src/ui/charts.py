@@ -1,4 +1,4 @@
-"""All Plotly chart builders, consistently styled for the dark theme."""
+"""All Plotly chart builders, consistently styled for the app theme."""
 
 from typing import Any
 
@@ -19,6 +19,30 @@ from ..constants import (
 from ..core.baselines import MOVING_AVERAGE, NAIVE
 from ..core.baselines import moving_average_forecast, naive_forecast
 
+_DARK = True
+
+
+def set_dark(dark: bool) -> None:
+    """Switch chart styling between the dark and light app themes."""
+    global _DARK
+    _DARK = dark
+
+
+def _theme() -> dict[str, Any]:
+    if _DARK:
+        return dict(
+            template="plotly_dark",
+            font=PLOT_FONT_COLOR,
+            grid=PLOT_GRID_COLOR,
+            actual=COLOR_ACTUAL,
+        )
+    return dict(
+        template="plotly_white",
+        font="#31333F",
+        grid="rgba(49,51,63,0.10)",
+        actual="#31333F",
+    )
+
 
 def _layout(
     title: str,
@@ -26,16 +50,17 @@ def _layout(
     yaxis_title: str = "Price (USD)",
     height: int = 420,
 ) -> dict:
+    t = _theme()
     return dict(
         title=dict(text=title),
         xaxis_title=xaxis_title,
         yaxis_title=yaxis_title,
-        template="plotly_dark",
+        template=t["template"],
         paper_bgcolor=PLOT_BGCOLOR,
         plot_bgcolor=PLOT_BGCOLOR,
-        font=dict(color=PLOT_FONT_COLOR),
-        xaxis=dict(gridcolor=PLOT_GRID_COLOR),
-        yaxis=dict(gridcolor=PLOT_GRID_COLOR),
+        font=dict(color=t["font"]),
+        xaxis=dict(gridcolor=t["grid"]),
+        yaxis=dict(gridcolor=t["grid"]),
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
         height=height,
         margin=dict(t=60, b=40, l=50, r=20),
@@ -109,6 +134,7 @@ def plot_test_predictions(
     """Actual vs predicted prices over the test window, with a history tail."""
     history = close.iloc[max(0, test_start_index - sequence_length) : test_start_index]
     test_dates = close.index[test_start_index:]
+    t = _theme()
     fig = go.Figure()
 
     if len(history) > 0:
@@ -118,7 +144,7 @@ def plot_test_predictions(
                 y=history.values,
                 mode="lines",
                 name="Training history",
-                line=dict(color=PLOT_GRID_COLOR, width=1),
+                line=dict(color=t["grid"], width=1),
             )
         )
     fig.add_trace(
@@ -127,7 +153,7 @@ def plot_test_predictions(
             y=test_predictions["actual"].values,
             mode="lines",
             name="Actual (test)",
-            line=dict(color=COLOR_ACTUAL),
+            line=dict(color=t["actual"]),
         )
     )
     fig.add_trace(
@@ -152,7 +178,7 @@ def plot_forecast(result) -> go.Figure:
             y=result.close.values,
             mode="lines",
             name="Close price",
-            line=dict(color=PLOT_GRID_COLOR, width=1.2),
+            line=dict(color=_theme()["grid"], width=1.2),
         )
     )
     test_dates = result.close.index[result.test_start_index :]
@@ -189,7 +215,7 @@ def plot_baseline_comparison(result) -> go.Figure:
             y=result.test_predictions["actual"].values,
             mode="lines",
             name="Actual (test)",
-            line=dict(color=COLOR_ACTUAL, width=2),
+            line=dict(color=_theme()["actual"], width=2),
         )
     )
     fig.add_trace(
@@ -368,9 +394,7 @@ def plot_weekday_effects(table: pd.DataFrame) -> go.Figure:
             y=table["mean"],
             name="Mean return",
             marker=dict(
-                color=[
-                    COLOR_PREDICTED if v >= 0 else COLOR_ACTUAL for v in table["mean"]
-                ]
+                color=[COLOR_PREDICTED if v >= 0 else "#EF5350" for v in table["mean"]]
             ),
         )
     )
@@ -428,7 +452,7 @@ def plot_price_with_indicators(
             y=close.values,
             mode="lines",
             name="Close",
-            line=dict(color=COLOR_ACTUAL),
+            line=dict(color=_theme()["actual"]),
         )
     )
     fig.add_trace(
@@ -535,7 +559,7 @@ def plot_macd(close: pd.Series) -> go.Figure:
             y=m["MACD"],
             mode="lines",
             name="MACD",
-            line=dict(color=COLOR_ACTUAL),
+            line=dict(color=_theme()["actual"]),
         )
     )
     fig.add_trace(
@@ -562,7 +586,7 @@ def plot_bollinger(close: pd.Series) -> go.Figure:
             y=close.values,
             mode="lines",
             name="Close",
-            line=dict(color=COLOR_ACTUAL),
+            line=dict(color=_theme()["actual"]),
         )
     )
     fig.add_trace(
