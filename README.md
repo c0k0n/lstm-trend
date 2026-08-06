@@ -111,14 +111,28 @@ In plain words:
   (deep EDA of any ticker), Compare (multi-ticker analysis), Findings
   (metrics, baseline comparison, caveats), Methodology (pipeline diagram,
   architecture, hyperparameters), About (project story).
-- All controls live in the sidebar inside popovers: ticker (with suggestions),
-  dates, lookback window, prediction horizon, epochs, and batch size.
+- All controls live in the sidebar: ticker and model parameters sit in
+  popovers, and the model settings (lookback, horizon, epochs, batch size)
+  are wrapped in a form — nothing takes effect until you press
+  **Apply model settings**.
+- Forecast horizon picks come as presets (5 / 15 / 30 days or Custom…)
+  via a segmented control instead of a plain slider.
 - Forecast table with formatted columns and a CSV download button.
 - Dark theme configured in `.streamlit/config.toml`, custom logo in the sidebar.
 - Light/dark mode: the whole app switches between the two themes from
   Streamlit's Settings menu, and a sidebar toggle flips the charts (and the
-  app chrome) without a restart.
+  app chrome) without a restart. A `?theme=` URL parameter deep-links it.
+- Shareable deep links: after a run the ticker, dates and horizon are written
+  back to the URL, so you can bookmark or share an exact analysis.
 - The training device (GPU or CPU) is shown in the sidebar.
+- Loading states everywhere: skeletons while data downloads, a streaming
+  verdict on the Findings page, a live "analysis run at …" age indicator that
+  refreshes itself, and a one-time confetti celebration after the first run.
+- A pinned bottom bar with a one-click **Run analysis** shortcut, welcome and
+  "how to read the charts" dialogs, jump menus on the Dashboard and Findings,
+  and a theme-aware app footer with the GitHub link.
+- Self-hosted Inter font, rounded widget corners, robots.txt and sitemap for
+  the deployed site.
 
 **Analytics (EDA)**
 
@@ -137,6 +151,8 @@ In plain words:
   "current signals" summary.
 - Volume analysis: volume bars coloured by daily move (weekly bars on long
   histories), and a volume-vs-return scatter.
+- Lazy tabs: only the tab you open actually computes — the other four stay
+  idle until you click them.
 
 **Compare (multi-ticker)**
 
@@ -144,7 +160,10 @@ In plain words:
 - Correlation matrix of daily returns with a plain-English reading.
 - Drawdown comparison, and a risk-vs-return scatter coloured by Sharpe ratio.
 - Side-by-side metrics table (total return, CAGR, volatility, Sharpe, Sortino,
-  max drawdown, VaR, CVaR, positive days) with CSV download.
+  max drawdown, VaR, CVaR, positive days) with CSV download. Each row carries
+  a sparkline of the price trend, and long drawdown lists are paginated.
+- An editable watchlist (add/remove tickers in the Compare page) that feeds
+  the comparison when enabled.
 
 ## Tech stack
 
@@ -219,10 +238,13 @@ lstm-trend/
 │   └── ui/                   # Streamlit-specific rendering
 │       ├── charts.py         # All Plotly chart builders
 │       ├── components.py     # Sidebar config, progress UI, result rendering
+│       ├── theme.py          # Light/dark toggle shared by the pages
 │       └── pages/            # dashboard, analytics, compare, findings, methodology, about
+│           └── nav.py        # Page registry (st.Page objects) for navigation
 ├── tests/                    # pytest unit tests + AppTest E2E
 ├── .github/workflows/ci.yml  # CI: uv sync, check, format, pytest
-├── .streamlit/config.toml    # Dark theme
+├── .streamlit/config.toml    # Dark/light themes, Inter font, static serving
+├── static/                   # robots.txt, sitemap.xml, self-hosted Inter font
 ├── assets/logo.svg           # Sidebar logo
 ├── pyproject.toml            # Project metadata + dependencies (uv)
 ├── uv.lock                   # Locked dependency versions
@@ -296,7 +318,9 @@ The suite covers:
   (`tests/test_pipeline.py`),
 - AppTest end-to-end tests that boot the real app, click through a full
   analysis (this one downloads live data from Yahoo Finance), and check the
-  Analytics, Compare and Findings pages (`tests/test_app.py`).
+  Analytics, Compare and Findings pages — including the lazy tabs, the model
+  settings form, deep-link query params, the theme toggle, the jump menus,
+  and the verdict feedback (`tests/test_app.py`).
 
 CI runs on every push to `main` via GitHub Actions: `uv sync`, `uv check`
 (type-check), `uv format --check`, then `pytest`.
@@ -334,9 +358,14 @@ Everything is controlled from the sidebar (inside popovers):
 | Ticker                  | Stock to analyse (`AAPL`, `MSFT`, … or Custom) | —        | `AAPL`  |
 | Start / End Date        | Historical data range                   | —              | 2020 → today |
 | Lookback window         | Days of history the model sees per step | 10 – 120       | 60      |
-| Prediction horizon      | Business days to forecast ahead         | 5 – 90         | 15      |
+| Prediction horizon      | Business days to forecast ahead (preset or Custom) | 5 – 90 | 15  |
 | Epochs                  | Training passes over the data           | 1 – 100        | 50      |
 | Batch size              | Samples per training step               | 8 – 128        | 32      |
+
+The model settings only apply once **Apply model settings** is pressed; the
+date pickers take effect immediately. You can also deep-link any analysis:
+`?ticker=MSFT&start=2024-01-01&end=2025-01-01&horizon=30` (plus
+`theme=light|dark`) prefills the sidebar and triggers a run.
 
 Some other fixed settings live in `src/constants.py`: 80/20 train-test split,
 10% validation split, 100 LSTM units, 0.2 dropout, early-stopping patience,
@@ -355,6 +384,10 @@ the moving-average window, and the plot colours.
   without the `LD_LIBRARY_PATH` hacks), grew into a multipage app with deep
   analytics and comparison pages, added baseline comparisons and an empirical
   Findings page, and introduced a test suite with GitHub Actions CI.
+- **2026 — modern UI pass.** Lazy tab loading, dialogs, jump menus, a pinned
+  bottom bar, model-settings forms, deep-linkable URLs, skeletons and
+  streaming status, self-hosted fonts and a theme-aware footer — with AppTest
+  coverage for all of it.
 
 The git history still contains all the earlier commits, if you ever want to see
 how it evolved.
