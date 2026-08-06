@@ -57,6 +57,81 @@ def test_device_caption_present(app):
 
 
 @pytest.mark.e2e
+def test_theme_toggle_present(app):
+    toggles = [t for t in app.toggle if t.label == "🌙 Dark mode"]
+    assert toggles and toggles[0].value is True
+
+
+@pytest.mark.e2e
+def test_dashboard_jump_menu(app):
+    menus = [m for m in app.menu_button if m.label == "More"]
+    assert menus
+    assert "📚 Methodology" in menus[0].options
+
+
+@pytest.mark.e2e
+def test_sidebar_model_settings_form(app):
+    assert any(b.label == "Apply model settings" for b in app.sidebar.button)
+    horizons = [
+        s for s in app.segmented_control if s.label == "Forecast horizon (days)"
+    ]
+    assert horizons and horizons[0].options == ["5", "15", "30", "Custom…"]
+
+
+@pytest.mark.e2e
+def test_query_param_deep_links():
+    at = AppTest.from_file(str(APP_PATH), default_timeout=600)
+    at.query_params["ticker"] = "MSFT"
+    at.query_params["start"] = "2024-01-01"
+    at.query_params["end"] = "2025-01-01"
+    at.query_params["horizon"] = "30"
+    at.query_params["theme"] = "light"
+    at.run()
+    assert not at.exception
+    assert at.session_state["ticker_custom"] == "MSFT"
+    assert at.session_state["start_date"].isoformat() == "2024-01-01"
+    assert at.session_state["end_date"].isoformat() == "2025-01-01"
+    assert at.session_state["horizon_preset"] == 30
+    assert at.session_state["theme_dark"] is False
+
+
+@pytest.mark.e2e
+def test_analytics_page_lazy_tabs(app):
+    app.switch_page("src/ui/pages/analytics.py").run()
+    assert not app.exception
+    assert [t.label for t in app.tabs] == [
+        "📈 Overview",
+        "📊 Returns",
+        "📅 Seasonality",
+        "🧭 Technicals",
+        "🕳️ Risk",
+    ]
+    assert len(app.tabs[0].metric) > 0
+
+
+@pytest.mark.e2e
+def test_findings_verdict_feedback(app):
+    _click_run(app)
+    app.switch_page("src/ui/pages/findings.py").run()
+    assert not app.exception
+    assert len(app.feedback) >= 1
+
+
+@pytest.mark.e2e
+def test_horizon_form_apply_reflected_in_url(app):
+    horizon = next(
+        s for s in app.segmented_control if s.label == "Forecast horizon (days)"
+    )
+    horizon.set_value(30)
+    submit = next(b for b in app.sidebar.button if b.label == "Apply model settings")
+    submit.click().run()
+    assert not app.exception
+    _click_run(app)
+    assert not app.exception
+    assert app.query_params["horizon"] == ["30"]
+
+
+@pytest.mark.e2e
 def test_analytics_page_renders(app):
     app.switch_page("src/ui/pages/analytics.py").run()
     assert not app.exception
