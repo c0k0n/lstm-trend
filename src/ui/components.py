@@ -62,14 +62,23 @@ def render_sidebar_config() -> dict[str, Any]:
             key="seq_len",
             help="How many past days the model sees before predicting the next.",
         )
-        future_steps = st.slider(
-            "Prediction horizon (days)",
-            5,
-            90,
-            DEFAULT_FUTURE_STEPS,
-            key="fut_steps",
-            help="How many business days ahead to forecast.",
+        future_steps = st.segmented_control(
+            "Forecast horizon (days)",
+            options=[5, 15, 30, "Custom…"],
+            default=DEFAULT_FUTURE_STEPS,
+            key="horizon_preset",
+            help="How many business days ahead to forecast. Pick a preset or "
+            "choose Custom… for any value between 5 and 90.",
         )
+        if future_steps == "Custom…":
+            future_steps = st.slider(
+                "Prediction horizon (days)",
+                5,
+                90,
+                DEFAULT_FUTURE_STEPS,
+                key="fut_steps",
+                help="How many business days ahead to forecast.",
+            )
         epochs = st.slider("Training epochs", 1, 100, DEFAULT_EPOCHS, key="epochs")
         batch_size = st.select_slider(
             "Batch size",

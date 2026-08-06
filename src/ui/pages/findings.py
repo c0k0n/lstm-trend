@@ -179,6 +179,7 @@ def render() -> None:
         st.markdown(f"### {icon} Verdict")
         st.badge(verdict_badge[0], color=verdict_badge[1])
         st.markdown(verdict)
+        st.feedback("thumbs", key="verdict_feedback")
 
     with st.expander("How to read the numbers"):
         st.markdown(
