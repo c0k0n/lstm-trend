@@ -1,9 +1,17 @@
+[server]
+enableStaticServing = true
+
 [theme]
 base = "dark"
 primaryColor = "#4FB477"
 backgroundColor = "#0E1117"
 secondaryBackgroundColor = "#1A1E27"
 textColor = "#F0F2F6"
+font = "Inter"
+headingFont = "Inter"
+baseRadius = "0.5rem"
+buttonRadius = "0.5rem"
+showWidgetBorder = true
 
 # Light variant: users can switch via the Settings menu (or "Use system settings")
 [theme.light]
@@ -11,6 +19,18 @@ primaryColor = "#1F8A55"
 backgroundColor = "#FFFFFF"
 secondaryBackgroundColor = "#F2F4F7"
 textColor = "#31333F"
+font = "Inter"
+headingFont = "Inter"
+baseRadius = "0.5rem"
+buttonRadius = "0.5rem"
+showWidgetBorder = true
+
+# Self-hosted Inter (variable weight) served from ./static
+[[theme.fontFaces]]
+family = "Inter"
+url = "app/static/inter-var-latin.woff2"
+weight = "100 900"
+style = "normal"
 
 [browser]
 gatherUsageStats = false
