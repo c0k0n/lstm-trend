@@ -1,15 +1,18 @@
 """Pure data-loading logic (no Streamlit imports)."""
 
 import datetime
-from typing import Optional
+import logging
+from typing import cast
 
 import pandas as pd
 import yfinance as yf
 
+logger = logging.getLogger(__name__)
+
 
 def download_stock_data(
     ticker: str, start_date: datetime.date, end_date: datetime.date
-) -> Optional[pd.DataFrame]:
+) -> pd.DataFrame | None:
     """Download daily OHLCV data for a ticker and return a flat-column DataFrame.
 
     yfinance occasionally returns MultiIndex columns (e.g. ("Close", "AAPL"));
@@ -20,17 +23,20 @@ def download_stock_data(
     """
     try:
         data = yf.download(ticker, start=start_date, end=end_date, progress=False)
-        if data.empty:
+        if data is None or data.empty:
             return None
 
         if isinstance(data.columns, pd.MultiIndex):
             data.columns = data.columns.get_level_values(0)
 
-        data = data[["Open", "High", "Low", "Close", "Volume"]]
+        data = cast(pd.DataFrame, data[["Open", "High", "Low", "Close", "Volume"]])
         if not isinstance(data.index, pd.DatetimeIndex):
             data.index = pd.to_datetime(data.index)
         data = data.dropna()
 
         return data if not data.empty else None
-    except Exception:
+    except Exception as exc:
+        logger.warning(
+            "Failed to download %s (%s -> %s): %s", ticker, start_date, end_date, exc
+        )
         return None

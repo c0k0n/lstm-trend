@@ -288,7 +288,6 @@ def render() -> None:
     st.set_page_config(
         page_title=f"Analytics — {APP_TITLE} | Stock EDA, risk metrics and indicators",
         page_icon="📊",
-        layout="wide",
     )
     st.title("📊 Analytics")
     st.text(

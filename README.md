@@ -120,7 +120,9 @@ In plain words:
 - Forecast table with formatted columns and a CSV download button.
 - Dark theme configured in `.streamlit/config.toml`, custom logo in the sidebar.
 - Shareable deep links: after a run the ticker, dates and horizon are written
-  back to the URL, so you can bookmark or share an exact analysis.
+  back to the URL, so you can bookmark or share an exact analysis. Preset
+  horizons (5/15/30) land on the matching preset; any other value (5–90)
+  switches the control to Custom… with the forecast length set accordingly.
 - The training device (GPU or CPU) is shown in the sidebar, and a "Current
   settings" summary (ticker, dates, horizon) sits right below the Run button.
 - Loading states everywhere: skeletons while data downloads, a streaming
@@ -197,7 +199,9 @@ A few details worth knowing:
   in the sidebar.
 - **Train/test split.** 80% of the sequence samples are used for training, 20%
   for testing. The test part is data the model has never seen, which is where
-  the metrics come from.
+  the metrics come from. The last 10% of the training slice is held out as the
+  validation set for early stopping — so the data splits roughly 72 / 8 / 20
+  across train / validation / test.
 - **Baselines.** The test window is scored twice more: once with a naive model
   ("tomorrow equals today") and once with a 20-day moving average. The Findings
   page compares all three, which is the closest this toy project gets to
@@ -215,7 +219,9 @@ A few details worth knowing:
 - **A quiet terminal.** On GPU machines, PyTorch's cuDNN LSTM path prints a
   "weights are not contiguous" hint on every forward pass; it is a
   performance note we can't act on (Keras calls the functional PyTorch API),
-  so it is filtered out in `src/core/lstm_model.py`.
+  so it is filtered out in `src/core/lstm_model.py`. The test suite silences
+  the same warning plus two PyTorch deprecation hints via `filterwarnings`
+  in `pyproject.toml`.
 
 ## Project structure
 
@@ -239,7 +245,8 @@ lstm-trend/
 │       └── pages/            # dashboard, analytics, compare, findings, methodology, about
 │           └── nav.py        # Page registry (st.Page objects) for navigation
 ├── tests/                    # pytest unit tests + AppTest E2E
-├── .github/workflows/ci.yml  # CI: uv sync, check, format, pytest
+├── .github/workflows/ci.yml  # CI: uv sync, check, format, unit tests
+├── .devcontainer/devcontainer.json  # VS Code / Codespaces: uv + Python 3.13
 ├── .streamlit/config.toml    # Dark theme, Inter font, static serving
 ├── static/                   # robots.txt, sitemap.xml, self-hosted Inter font
 ├── assets/logo.svg           # Sidebar logo
@@ -282,6 +289,9 @@ A few notes:
 - The first run downloads PyTorch, so be patient if `uv sync` takes a while.
 - The first analysis downloads data and trains a model, which takes a bit of
   time too — the progress bar will keep you company.
+- Prefer an isolated environment? The repo ships a `.devcontainer` that
+  provisions uv + Python 3.13 and launches the app automatically — open it in
+  VS Code with the Dev Containers extension or in GitHub Codespaces.
 
 ## GPU acceleration
 
@@ -301,7 +311,11 @@ CUDA libraries installed into the virtualenv plus an `LD_LIBRARY_PATH` export
 ## Tests
 
 ```bash
+# Full suite (the e2e tests download live data from Yahoo Finance)
 uv run pytest tests -q
+
+# Unit tests only — no network access needed
+uv run pytest tests -m "not e2e" -q
 ```
 
 The suite covers:
@@ -309,18 +323,23 @@ The suite covers:
 - unit tests for scaling/sequence creation, metrics, and the baselines
   (`tests/test_preprocessing.py`, `test_metrics.py`, `test_baselines.py`),
 - a full suite for the analytics module: returns, risk metrics, drawdowns,
-  seasonality, stationarity, and every technical indicator
-  (`tests/test_analytics.py`),
-- a full pipeline test on synthetic data with a tiny model
-  (`tests/test_pipeline.py`),
+  seasonality, stationarity, every technical indicator, and an edge case where
+  an entire weekday is missing from the data (`tests/test_analytics.py`),
+- a full pipeline test on synthetic data with a tiny model, including the
+  combined baseline-forecast frame (`tests/test_pipeline.py`),
 - AppTest end-to-end tests that boot the real app, click through a full
   analysis (this one downloads live data from Yahoo Finance), and check the
   Analytics, Compare and Findings pages — including the lazy tabs, the model
-  settings form, deep-link query params, the sidebar settings caption, and
-  the verdict feedback (`tests/test_app.py`).
+  settings form, deep-link query params (preset and custom horizons), the
+  sidebar settings caption, the footer's GitHub link, and the verdict
+  feedback (`tests/test_app.py`).
+
+The e2e tests are tagged `@pytest.mark.e2e` (registered in `pyproject.toml`
+so the run stays warning-free), and a few known-benchmark warnings from
+PyTorch/Keras are filtered out for the suite via `filterwarnings`.
 
 CI runs on every push to `main` via GitHub Actions: `uv sync`, `uv check`
-(type-check), `uv format --check`, then `pytest`.
+(type-check), `uv format --check`, then the unit tests (`-m "not e2e"`).
 
 ## Deploying to Streamlit Community Cloud
 
@@ -362,7 +381,9 @@ Everything is controlled from the sidebar (inside popovers):
 The model settings only apply once **Apply model settings** is pressed; the
 date pickers take effect immediately. You can also deep-link any analysis:
 `?ticker=MSFT&start=2024-01-01&end=2025-01-01&horizon=30` prefills the
-sidebar and triggers a run.
+sidebar and triggers a run. `horizon` accepts the presets (5, 15, 30) or any
+integer from 5–90 — non-preset values switch the segmented control to
+Custom… with your number as the forecast length.
 
 Some other fixed settings live in `src/constants.py`: 80/20 train-test split,
 10% validation split, 100 LSTM units, 0.2 dropout, early-stopping patience,
@@ -384,6 +405,13 @@ the moving-average window, and the plot colours.
 - **2026 — modern UI pass.** Lazy tab loading, dialogs, model-settings forms,
   deep-linkable URLs, skeletons and streaming status, self-hosted fonts and a
   theme-aware footer — with AppTest coverage for all of it.
+- **2026 — quality pass.** A full audit of the codebase: fixed the moving
+  average baseline (it was scored against the wrong window), a crash on
+  weekday tables when a weekday is missing, a broken deep-link path for
+  custom horizons, and a hard-coded footer link; removed dead code and
+  leftover dependencies, deduplicated chart colours and page configuration,
+  modernized the typing, rewrote the devcontainer for uv + Python 3.13, and
+  grew the test suite with regression and end-to-end coverage.
 
 The git history still contains all the earlier commits, if you ever want to see
 how it evolved.

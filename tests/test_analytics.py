@@ -86,6 +86,16 @@ def test_weekday_effects_has_five_rows(close):
     assert set(table.columns) == {"weekday", "mean", "hit_rate", "count"}
 
 
+def test_weekday_effects_with_missing_weekday():
+    idx = pd.bdate_range("2024-01-01", periods=200)
+    idx = idx[pd.Series(idx).map(lambda ts: ts.dayofweek) != 3]  # no Thursdays at all
+    returns = pd.Series(np.linspace(0.001, 0.01, len(idx)), index=idx)
+    table = analytics.weekday_effects(returns)
+    assert list(table["weekday"]) == ["Mon", "Tue", "Wed", "Thu", "Fri"]
+    assert table["count"].iloc[3] == 0
+    assert table["mean"].isna().iloc[3]
+
+
 def test_monthly_matrix_shape(close):
     matrix = analytics.monthly_returns_matrix(close)
     assert matrix.shape[1] == 12

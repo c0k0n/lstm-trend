@@ -41,7 +41,6 @@ def render() -> None:
     st.set_page_config(
         page_title=f"Methodology — {APP_TITLE} | How the LSTM pipeline works",
         page_icon="📚",
-        layout="wide",
     )
     st.title("📚 Methodology")
     st.text(
@@ -152,7 +151,7 @@ def render() -> None:
                 f"{DENSE_UNITS} units, ReLU",
                 "Mean absolute error",
                 "Adam, default (1e-3)",
-                f"80% train, 10% validation, 10% test",
+                f"80% train / 20% test (validation = 10% of the train slice)",
                 f"{EARLY_STOPPING_PATIENCE} epochs without improvement",
                 str(RANDOM_SEED),
                 str(MOVING_AVERAGE_WINDOW),

@@ -2,7 +2,7 @@
 
 import datetime
 from functools import lru_cache
-from typing import Any, Optional
+from typing import Any
 
 import streamlit as st
 
@@ -39,7 +39,7 @@ def training_device() -> str:
     return "CPU"
 
 
-def get_analysis() -> Optional[AnalysisResult]:
+def get_analysis() -> AnalysisResult | None:
     """The most recent analysis, shared between pages via session state."""
     return st.session_state.get(SESSION_KEY)
 
@@ -164,7 +164,7 @@ def render_hero() -> None:
     st.space("medium")
 
 
-def run_analysis_with_ui(params: dict[str, Any]) -> Optional[AnalysisResult]:
+def run_analysis_with_ui(params: dict[str, Any]) -> AnalysisResult | None:
     """Execute the pipeline inside an st.status stage box with progress."""
     from ..core.callbacks import ProgressReporterCallback
 

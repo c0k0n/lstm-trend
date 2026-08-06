@@ -1,6 +1,6 @@
 """All Plotly chart builders, consistently styled for the app theme."""
 
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -17,7 +17,6 @@ from ..constants import (
     PLOT_GRID_COLOR,
 )
 from ..core.baselines import MOVING_AVERAGE, NAIVE
-from ..core.baselines import moving_average_forecast, naive_forecast
 
 _DARK_THEME = dict(
     template="plotly_dark",
@@ -26,9 +25,19 @@ _DARK_THEME = dict(
     actual=COLOR_ACTUAL,
 )
 
+_PALETTE = ("#4FB477", "#64B5F6", "#FFA726", "#AB47BC", "#EF5350", "#26A69A")
 
-def _theme() -> dict[str, Any]:
-    return _DARK_THEME
+
+def _with_alpha(hex_color: str, alpha: float) -> str:
+    r = int(hex_color[1:3], 16)
+    g = int(hex_color[3:5], 16)
+    b = int(hex_color[5:7], 16)
+    return f"rgba({r},{g},{b},{alpha})"
+
+
+def _cumulative_returns(close: pd.Series) -> pd.Series:
+    values = close.pct_change().fillna(0.0).to_numpy(dtype=float)
+    return pd.Series(np.cumprod(1.0 + values), index=close.index)
 
 
 def _layout(
@@ -37,35 +46,20 @@ def _layout(
     yaxis_title: str = "Price (USD)",
     height: int = 420,
 ) -> dict:
-    t = _theme()
     return dict(
         title=dict(text=title),
         xaxis_title=xaxis_title,
         yaxis_title=yaxis_title,
-        template=t["template"],
+        template=_DARK_THEME["template"],
         paper_bgcolor=PLOT_BGCOLOR,
         plot_bgcolor=PLOT_BGCOLOR,
-        font=dict(color=t["font"]),
-        xaxis=dict(gridcolor=t["grid"]),
-        yaxis=dict(gridcolor=t["grid"]),
+        font=dict(color=_DARK_THEME["font"]),
+        xaxis=dict(gridcolor=_DARK_THEME["grid"]),
+        yaxis=dict(gridcolor=_DARK_THEME["grid"]),
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
         height=height,
         margin=dict(t=60, b=40, l=50, r=20),
     )
-
-
-def plot_close(close: pd.Series) -> go.Figure:
-    fig = go.Figure(
-        go.Scatter(x=close.index, y=close.values, mode="lines", name="Close price")
-    )
-    fig.update_layout(**_layout("Closing price"))
-    return fig
-
-
-def plot_volume(volume: pd.Series) -> go.Figure:
-    fig = go.Figure(go.Bar(x=volume.index, y=volume.values, name="Volume"))
-    fig.update_layout(**_layout("Trading volume", yaxis_title="Volume"))
-    return fig
 
 
 def plot_candlestick(data: pd.DataFrame) -> go.Figure:
@@ -121,7 +115,7 @@ def plot_test_predictions(
     """Actual vs predicted prices over the test window, with a history tail."""
     history = close.iloc[max(0, test_start_index - sequence_length) : test_start_index]
     test_dates = close.index[test_start_index:]
-    t = _theme()
+    t = _DARK_THEME
     fig = go.Figure()
 
     if len(history) > 0:
@@ -165,7 +159,7 @@ def plot_forecast(result) -> go.Figure:
             y=result.close.values,
             mode="lines",
             name="Close price",
-            line=dict(color=_theme()["grid"], width=1.2),
+            line=dict(color=_DARK_THEME["grid"], width=1.2),
         )
     )
     test_dates = result.close.index[result.test_start_index :]
@@ -202,7 +196,7 @@ def plot_baseline_comparison(result) -> go.Figure:
             y=result.test_predictions["actual"].values,
             mode="lines",
             name="Actual (test)",
-            line=dict(color=_theme()["actual"], width=2),
+            line=dict(color=_DARK_THEME["actual"], width=2),
         )
     )
     fig.add_trace(
@@ -214,15 +208,10 @@ def plot_baseline_comparison(result) -> go.Figure:
             line=dict(color=COLOR_PREDICTED),
         )
     )
-
-    naive = naive_forecast(result.close, result.test_start_index)
-    moving = moving_average_forecast(
-        result.close, result.test_start_index, result.params["sequence_length"]
-    )
     fig.add_trace(
         go.Scatter(
-            x=naive.index,
-            y=naive.values,
+            x=test_dates,
+            y=result.baselines_frame[NAIVE].values,
             mode="lines",
             name=NAIVE,
             line=dict(color=COLOR_NAIVE, dash="dot"),
@@ -230,8 +219,8 @@ def plot_baseline_comparison(result) -> go.Figure:
     )
     fig.add_trace(
         go.Scatter(
-            x=moving.index,
-            y=moving.values,
+            x=test_dates,
+            y=result.baselines_frame[MOVING_AVERAGE].values,
             mode="lines",
             name=MOVING_AVERAGE,
             line=dict(color=COLOR_MA, dash="dash"),
@@ -269,7 +258,7 @@ def plot_metric_bars(result) -> go.Figure:
 # Analytics page charts
 # --------------------------------------------------------------------------- #
 def plot_cumulative_returns(close: pd.Series, log_scale: bool = True) -> go.Figure:
-    cum = (1 + close.pct_change().fillna(0)).cumprod()
+    cum = _cumulative_returns(close)
     fig = go.Figure(
         go.Scatter(x=cum.index, y=cum.values, mode="lines", name="Cumulative return")
     )
@@ -314,14 +303,19 @@ def plot_qq(returns: pd.Series) -> go.Figure:
     (osm, osr), (slope, intercept, _) = scipy_stats.probplot(
         returns.dropna(), dist="norm"
     )
+    osm_arr = np.asarray(osm, dtype=float)
+    osr_arr = np.asarray(osr, dtype=float)
+    line_y = cast(float, slope) * osm_arr + cast(float, intercept)
     fig = go.Figure()
     fig.add_trace(
-        go.Scatter(x=osm, y=osr, mode="markers", name="Observed", marker=dict(size=4))
+        go.Scatter(
+            x=osm_arr, y=osr_arr, mode="markers", name="Observed", marker=dict(size=4)
+        )
     )
     fig.add_trace(
         go.Scatter(
-            x=osm,
-            y=slope * osm + intercept,
+            x=osm_arr,
+            y=line_y,
             mode="lines",
             name="Normal line",
             line=dict(color=COLOR_PREDICTED, dash="dash"),
@@ -381,7 +375,9 @@ def plot_weekday_effects(table: pd.DataFrame) -> go.Figure:
             y=table["mean"],
             name="Mean return",
             marker=dict(
-                color=[COLOR_PREDICTED if v >= 0 else "#EF5350" for v in table["mean"]]
+                color=[
+                    COLOR_PREDICTED if v >= 0 else _PALETTE[4] for v in table["mean"]
+                ]
             ),
         )
     )
@@ -419,7 +415,11 @@ def plot_underwater(close: pd.Series) -> go.Figure:
     fig = go.Figure()
     fig.add_trace(
         go.Scatter(
-            x=dd.index, y=dd.values * 100, mode="lines", name="Drawdown", fill="tozeroy"
+            x=dd.index,
+            y=dd.to_numpy() * 100,
+            mode="lines",
+            name="Drawdown",
+            fill="tozeroy",
         )
     )
     fig.update_layout(
@@ -439,7 +439,7 @@ def plot_price_with_indicators(
             y=close.values,
             mode="lines",
             name="Close",
-            line=dict(color=_theme()["actual"]),
+            line=dict(color=_DARK_THEME["actual"]),
         )
     )
     fig.add_trace(
@@ -498,7 +498,7 @@ def plot_price_with_indicators(
                     y=close.loc[death["Date"]].values,
                     mode="markers",
                     name="Death cross",
-                    marker=dict(symbol="triangle-down", size=12, color="#EF5350"),
+                    marker=dict(symbol="triangle-down", size=12, color=_PALETTE[4]),
                 )
             )
     fig.update_layout(**_layout("Price with moving averages", height=460))
@@ -520,10 +520,10 @@ def plot_rsi(close: pd.Series) -> go.Figure:
         )
     )
     fig.add_hline(
-        y=70, line_dash="dash", line_color="#EF5350", annotation_text="Overbought"
+        y=70, line_dash="dash", line_color=_PALETTE[4], annotation_text="Overbought"
     )
     fig.add_hline(
-        y=30, line_dash="dash", line_color="#26A69A", annotation_text="Oversold"
+        y=30, line_dash="dash", line_color=_PALETTE[5], annotation_text="Oversold"
     )
     fig.update_layout(
         **_layout("Relative Strength Index (14)", yaxis_title="RSI", height=280)
@@ -536,7 +536,7 @@ def plot_macd(close: pd.Series) -> go.Figure:
 
     m = macd(close).dropna()
     fig = go.Figure()
-    colors = [COLOR_PREDICTED if v >= 0 else "#EF5350" for v in m["Histogram"]]
+    colors = [COLOR_PREDICTED if v >= 0 else _PALETTE[4] for v in m["Histogram"]]
     fig.add_trace(
         go.Bar(x=m.index, y=m["Histogram"], name="Histogram", marker=dict(color=colors))
     )
@@ -546,7 +546,7 @@ def plot_macd(close: pd.Series) -> go.Figure:
             y=m["MACD"],
             mode="lines",
             name="MACD",
-            line=dict(color=_theme()["actual"]),
+            line=dict(color=_DARK_THEME["actual"]),
         )
     )
     fig.add_trace(
@@ -573,7 +573,7 @@ def plot_bollinger(close: pd.Series) -> go.Figure:
             y=close.values,
             mode="lines",
             name="Close",
-            line=dict(color=_theme()["actual"]),
+            line=dict(color=_DARK_THEME["actual"]),
         )
     )
     fig.add_trace(
@@ -593,7 +593,7 @@ def plot_bollinger(close: pd.Series) -> go.Figure:
             name="Lower",
             line=dict(color=COLOR_NAIVE, dash="dash"),
             fill="tonexty",
-            fillcolor="rgba(100,181,246,0.08)",
+            fillcolor=_with_alpha(_PALETTE[1], 0.08),
         )
     )
     fig.update_layout(**_layout("Bollinger bands (20, 2σ)", height=360))
@@ -601,22 +601,21 @@ def plot_bollinger(close: pd.Series) -> go.Figure:
 
 
 def plot_volume_analysis(data: pd.DataFrame) -> go.Figure:
-    close = data["Close"]
-    volume = data["Volume"]
-    aggregated = False
-    if len(data) > 260:
-        # Long histories need aggregated bars or they become unreadable
+    aggregated = len(data) > 260
+    if aggregated:
         agg = (
             data[["Close", "Volume"]]
             .resample("W-FRI")
             .agg({"Close": "last", "Volume": "sum"})
             .dropna()
         )
-        close, volume = agg["Close"], agg["Volume"]
-        aggregated = True
+        close = cast(pd.Series, agg["Close"])
+        volume = cast(pd.Series, agg["Volume"])
+    else:
+        close = cast(pd.Series, data["Close"])
+        volume = cast(pd.Series, data["Volume"])
     ret = close.pct_change().fillna(0)
-    colors = [COLOR_PREDICTED if v >= 0 else "#EF5350" for v in ret]
-    # Explicit bar width in milliseconds: one trading day, or five for weekly
+    colors = [COLOR_PREDICTED if v >= 0 else _PALETTE[4] for v in ret]
     bar_width = 5 * 86_400_000 if aggregated else 86_400_000
     fig = go.Figure()
     fig.add_trace(
@@ -635,17 +634,17 @@ def plot_volume_analysis(data: pd.DataFrame) -> go.Figure:
 
 
 def plot_volume_return_scatter(data: pd.DataFrame) -> go.Figure:
-    close = data["Close"]
-    volume = data["Volume"]
+    close = cast(pd.Series, data["Close"])
+    volume = cast(pd.Series, data["Volume"])
     ret = close.pct_change().fillna(0)
     fig = go.Figure(
         go.Scatter(
-            x=volume.values,
-            y=ret.values,
+            x=volume.to_numpy(),
+            y=ret.to_numpy(),
             mode="markers",
             name="Day",
-            marker=dict(size=5, color="rgba(100,181,246,0.6)"),
-            customdata=close.index.strftime("%Y-%m-%d"),
+            marker=dict(size=5, color=_with_alpha(_PALETTE[1], 0.6)),
+            customdata=close.index.to_series().dt.strftime("%Y-%m-%d"),
             hovertemplate="%{customdata}<br>vol %{x:,.0f}<br>return %{y:.2%}<extra></extra>",
         )
     )
@@ -667,7 +666,7 @@ def plot_normalized_prices(series: dict[str, pd.Series]) -> go.Figure:
     from ..core.analytics import normalize_series
 
     fig = go.Figure()
-    colors = ["#4FB477", "#64B5F6", "#FFA726", "#AB47BC", "#EF5350", "#26A69A"]
+    colors = _PALETTE
     for i, (name, close) in enumerate(series.items()):
         fig.add_trace(
             go.Scatter(
@@ -686,9 +685,9 @@ def plot_normalized_prices(series: dict[str, pd.Series]) -> go.Figure:
 
 def plot_cumulative_comparison(series: dict[str, pd.Series]) -> go.Figure:
     fig = go.Figure()
-    colors = ["#4FB477", "#64B5F6", "#FFA726", "#AB47BC", "#EF5350", "#26A69A"]
+    colors = _PALETTE
     for i, (name, close) in enumerate(series.items()):
-        cum = (1 + close.pct_change().fillna(0)).cumprod()
+        cum = _cumulative_returns(close)
         fig.add_trace(
             go.Scatter(
                 x=cum.index,
@@ -727,13 +726,13 @@ def plot_drawdown_comparison(series: dict[str, pd.Series]) -> go.Figure:
     from ..core.analytics import drawdown_series
 
     fig = go.Figure()
-    colors = ["#4FB477", "#64B5F6", "#FFA726", "#AB47BC", "#EF5350", "#26A69A"]
+    colors = _PALETTE
     for i, (name, close) in enumerate(series.items()):
         dd = drawdown_series(close)
         fig.add_trace(
             go.Scatter(
                 x=dd.index,
-                y=dd.values * 100,
+                y=dd.to_numpy() * 100,
                 mode="lines",
                 name=name,
                 line=dict(color=colors[i % len(colors)]),

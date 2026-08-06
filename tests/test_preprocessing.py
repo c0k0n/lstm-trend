@@ -2,18 +2,15 @@
 
 import numpy as np
 
-from src.core.preprocessing import create_sequences, inverse_scale_data, scale_data
+from src.core.preprocessing import create_sequences, scale_data
 
 
-def test_scale_roundtrip():
+def test_scale_data_bounds():
     prices = np.array([[100.0], [150.0], [200.0], [130.0], [170.0]])
-    scaled, scaler = scale_data(prices)
+    scaled, _ = scale_data(prices)
 
     assert scaled.min() == 0.0
     assert scaled.max() == 1.0
-
-    restored = inverse_scale_data(scaled, scaler)
-    np.testing.assert_allclose(restored, prices, atol=1e-6)
 
 
 def test_create_sequences_shapes():

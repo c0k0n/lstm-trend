@@ -93,7 +93,12 @@ def _apply_query_params() -> None:
 
     horizon = qp.get("horizon")
     if horizon and str(horizon).isdigit():
-        st.session_state["horizon_preset"] = int(str(horizon))
+        value = int(str(horizon))
+        if value in (5, 15, 30):
+            st.session_state["horizon_preset"] = value
+        else:
+            st.session_state["horizon_preset"] = "Custom…"
+            st.session_state["fut_steps"] = min(90, max(5, value))
 
 
 def _write_query_params(params: dict) -> None:
@@ -108,8 +113,6 @@ def render() -> None:
     st.set_page_config(
         page_title=f"Dashboard — {APP_TITLE} | LSTM stock price forecasting",
         page_icon="📈",
-        layout="wide",
-        initial_sidebar_state="expanded",
     )
     _show_welcome_dialog()
     _apply_query_params()

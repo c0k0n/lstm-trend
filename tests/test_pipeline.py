@@ -57,6 +57,12 @@ def test_run_analysis_structure(fake_loader):
 
     assert set(result.baselines.keys()) == {NAIVE, MOVING_AVERAGE}
 
+    frame = result.baselines_frame
+    assert set(frame.columns) == {NAIVE, MOVING_AVERAGE}
+    assert len(frame) == len(result.test_predictions)
+    assert frame.notna().all().all()
+    assert frame.index.equals(result.close.index[result.test_start_index :])
+
 
 def test_pipeline_error_on_empty_data(monkeypatch):
     monkeypatch.setattr(pipeline, "download_stock_data", lambda *a, **k: pd.DataFrame())

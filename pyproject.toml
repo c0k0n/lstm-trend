@@ -11,7 +11,6 @@ dependencies = [
     "plotly>=6.9.0",
     "scikit-learn>=1.9.0",
     "scipy>=1.18.0",
-    "starlette>=1.3.1",
     "statsmodels>=0.14.6",
     "streamlit>=1.61.1",
     "torch>=2.13.0",
@@ -26,6 +25,12 @@ dev = [
 [tool.uv]
 package = false
 
-[build-system]
-requires = ["uv_build>=0.12.1,<0.13.0"]
-build-backend = "uv_build"
+[tool.pytest.ini_options]
+markers = [
+    "e2e: end-to-end AppTest tests that exercise the live Streamlit app",
+]
+filterwarnings = [
+    "ignore:__array__ implementation doesn't accept a copy keyword:DeprecationWarning",
+    "ignore:RNN module weights are not part of single contiguous chunk of memory:UserWarning",
+    "ignore:`torch.jit.script_method` is deprecated:DeprecationWarning",
+]

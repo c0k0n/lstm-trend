@@ -9,7 +9,6 @@ def render() -> None:
     st.set_page_config(
         page_title=f"About — {APP_TITLE} | Project story, stack and FAQ",
         page_icon="🎓",
-        layout="wide",
     )
     st.title("🎓 About this project")
     st.text(

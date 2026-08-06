@@ -71,7 +71,6 @@ def render() -> None:
     st.set_page_config(
         page_title=f"Findings — {APP_TITLE} | LSTM vs baselines",
         page_icon="🔬",
-        layout="wide",
     )
     st.title("🔬 Findings")
     st.text(

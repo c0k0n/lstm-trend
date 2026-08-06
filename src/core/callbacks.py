@@ -1,6 +1,6 @@
 """Keras callback that reports training progress through plain callables."""
 
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
 from keras.callbacks import Callback
 
@@ -25,11 +25,11 @@ class ProgressReporterCallback(Callback):
         self.on_finish = on_finish
         self.current_epoch = 0
 
-    def on_epoch_begin(self, epoch: int, logs: Optional[Any] = None) -> None:
+    def on_epoch_begin(self, epoch: int, logs: Any | None = None) -> None:
         self.current_epoch = epoch + 1
 
-    def on_epoch_end(self, epoch: int, logs: Optional[dict[str, Any]] = None) -> None:
+    def on_epoch_end(self, epoch: int, logs: dict[str, Any] | None = None) -> None:
         self.on_epoch(self.current_epoch, self.total_epochs, logs or {})
 
-    def on_train_end(self, logs: Optional[Any] = None) -> None:
+    def on_train_end(self, logs: Any | None = None) -> None:
         self.on_finish()

@@ -15,7 +15,7 @@ from src.ui.pages.nav import get_pages  # noqa: E402
 
 def _footer_html() -> str:
     """App-wide footer; CSS vars track the theme, with dark fallbacks."""
-    return """
+    return f"""
 <footer
   style="
     margin-top: 2.5rem;

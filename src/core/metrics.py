@@ -1,7 +1,5 @@
 """Regression metrics for forecast evaluation."""
 
-from typing import Dict
-
 import numpy as np
 from sklearn.metrics import (
     mean_absolute_error,
@@ -13,7 +11,7 @@ from sklearn.metrics import (
 METRIC_NAMES: tuple[str, ...] = ("mse", "rmse", "mae", "mape", "r2")
 
 
-def regression_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
+def regression_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:
     """Compute MSE, RMSE, MAE, MAPE and R² for a pair of 1-D arrays.
 
     All values are computed on the original price scale (not scaled input),

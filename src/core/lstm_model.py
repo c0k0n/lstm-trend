@@ -1,7 +1,6 @@
 """LSTM model definition, training, evaluation and step-wise forecasting."""
 
 import warnings
-from typing import Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -10,7 +9,6 @@ from keras import layers, models
 from sklearn.preprocessing import MinMaxScaler
 
 from .callbacks import ProgressReporterCallback
-from .metrics import regression_metrics
 
 # PyTorch's cuDNN LSTM path warns that Keras-built weights are not one
 # contiguous chunk of memory. We cannot call flatten_parameters() because
@@ -24,7 +22,7 @@ warnings.filterwarnings(
 
 
 def create_lstm_model(
-    input_shape: Tuple[int, int],
+    input_shape: tuple[int, int],
     units: int,
     dropout_rate: float,
     dense_units: int,
@@ -51,7 +49,7 @@ def train_model(
     batch_size: int,
     validation_split: float,
     patience: int,
-    progress_callback: Optional[ProgressReporterCallback] = None,
+    progress_callback: ProgressReporterCallback | None = None,
 ):
     """Train the model with early stopping and an optional progress callback."""
     callbacks: list = []

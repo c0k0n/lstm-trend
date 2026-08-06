@@ -1,9 +1,13 @@
 """AppTest end-to-end tests for the Streamlit app (network access required)."""
 
+import importlib.util
 from pathlib import Path
 
 import pytest
+import streamlit as st
 from streamlit.testing.v1 import AppTest
+
+from src.constants import GITHUB_URL
 
 APP_PATH = Path(__file__).resolve().parent.parent / "streamlit_app.py"
 
@@ -24,6 +28,26 @@ def _click_run(at: AppTest) -> None:
 def test_dashboard_renders(app):
     assert not app.exception
     assert "LSTM Trend" in app.title[0].value
+
+
+@pytest.mark.e2e
+def test_footer_links_to_repo(monkeypatch):
+    class _NoopNav:
+        def run(self):
+            return None
+
+    captured: dict[str, str] = {}
+    monkeypatch.setattr(st, "set_page_config", lambda **kwargs: None)
+    monkeypatch.setattr(st, "logo", lambda *args, **kwargs: None)
+    monkeypatch.setattr(st, "navigation", lambda *args, **kwargs: _NoopNav())
+    monkeypatch.setattr(st, "html", lambda html: captured.setdefault("html", html))
+
+    spec = importlib.util.spec_from_file_location("streamlit_app_entry", str(APP_PATH))
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    assert GITHUB_URL in captured["html"]
 
 
 @pytest.mark.e2e
@@ -84,6 +108,26 @@ def test_query_param_deep_links():
     assert at.session_state["start_date"].isoformat() == "2024-01-01"
     assert at.session_state["end_date"].isoformat() == "2025-01-01"
     assert at.session_state["horizon_preset"] == 30
+
+
+@pytest.mark.e2e
+def test_query_param_custom_horizon_deep_link():
+    at = AppTest.from_file(str(APP_PATH), default_timeout=600)
+    at.query_params["horizon"] = "21"
+    at.run()
+    assert not at.exception
+    assert at.session_state["horizon_preset"] == "Custom…"
+    assert at.session_state["fut_steps"] == 21
+
+
+@pytest.mark.e2e
+def test_query_param_custom_horizon_clamped():
+    at = AppTest.from_file(str(APP_PATH), default_timeout=600)
+    at.query_params["horizon"] = "999"
+    at.run()
+    assert not at.exception
+    assert at.session_state["horizon_preset"] == "Custom…"
+    assert at.session_state["fut_steps"] == 90
 
 
 @pytest.mark.e2e

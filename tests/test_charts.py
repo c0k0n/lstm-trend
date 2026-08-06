@@ -55,7 +55,7 @@ def test_candlestick_stays_daily_on_short_history():
 
 def test_dark_theme_styling():
     data = make_data(100)
-    fig = charts.plot_close(data["Close"])
+    fig = charts.plot_cumulative_returns(data["Close"])
     assert fig.layout.font.color == "#F0F2F6"
     predictions = pd.DataFrame(
         {"actual": data["Close"].values, "predicted": data["Close"].values}

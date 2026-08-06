@@ -22,10 +22,6 @@ def daily_returns(close: pd.Series) -> pd.Series:
     return close.pct_change().dropna()
 
 
-def log_returns(close: pd.Series) -> pd.Series:
-    return np.log(close / close.shift(1)).dropna()
-
-
 def cumulative_return(close: pd.Series) -> float:
     return float(close.iloc[-1] / close.iloc[0] - 1) if len(close) > 1 else 0.0
 
@@ -33,7 +29,9 @@ def cumulative_return(close: pd.Series) -> float:
 def annualized_return(close: pd.Series, periods: int = TRADING_DAYS) -> float:
     if len(close) < 2:
         return 0.0
-    years = (close.index[-1] - close.index[0]).days / 365.25
+    first = cast(pd.Timestamp, close.index[0])
+    last = cast(pd.Timestamp, close.index[-1])
+    years = (last - first).days / 365.25
     if years <= 0:
         return 0.0
     return float((close.iloc[-1] / close.iloc[0]) ** (1 / years) - 1)
@@ -97,17 +95,19 @@ def rolling_volatility(
 
 def period_returns(close: pd.Series) -> dict[str, float]:
     """Trailing returns over common horizons, in percent."""
-    last_date = close.index[-1]
+    last_date = cast(pd.Timestamp, close.index[-1])
     today = close.iloc[-1]
     out: dict[str, float] = {}
     for label, days in (("1M", 21), ("3M", 63), ("6M", 126), ("1Y", 252)):
         lookback = int(days * 1.4)
-        past = close.asof(last_date - pd.Timedelta(days=lookback))
-        out[label] = float((today / past - 1) * 100) if pd.notna(past) else np.nan
+        past = cast(float, close.asof(last_date - pd.Timedelta(days=lookback)))
+        out[label] = float((today / past - 1) * 100) if not np.isnan(past) else np.nan
 
-    year_start = close.asof(pd.Timestamp(year=int(last_date.year), month=1, day=1))
+    year_start = cast(
+        float, close.asof(pd.Timestamp(year=last_date.year, month=1, day=1))
+    )
     out["YTD"] = (
-        float((today / year_start - 1) * 100) if pd.notna(year_start) else np.nan
+        float((today / year_start - 1) * 100) if not np.isnan(year_start) else np.nan
     )
     return out
 
@@ -146,20 +146,21 @@ def drawdown_events(close: pd.Series, min_depth: float = 0.05) -> pd.DataFrame:
                         "Duration (days)": (idx - start).days,
                     }
                 )
-                in_dd = False
+        in_dd = False
     if in_dd and start is not None and trough is not None:
+        last_index = cast(pd.Timestamp, close.index[-1])
         events.append(
             {
                 "Start": start,
                 "Trough": trough,
-                "End": close.index[-1],
+                "End": last_index,
                 "Depth": trough_val,
-                "Duration (days)": (close.index[-1] - start).days,
+                "Duration (days)": (last_index - start).days,
             }
         )
     df = pd.DataFrame(events)
     if len(df):
-        df = df[df["Depth"] <= -min_depth].sort_values("Start", ascending=False)
+        df = df[df["Depth"] <= -min_depth].sort_values(by="Start", ascending=False)
     return df
 
 
@@ -170,7 +171,7 @@ def return_moments(returns: pd.Series) -> dict[str, float]:
     return {
         "skewness": float(stats.skew(returns)) if len(returns) > 2 else 0.0,
         "kurtosis": float(stats.kurtosis(returns)) if len(returns) > 2 else 0.0,
-        "std": float(returns.std(ddof=1)) if len(returns) > 1 else 0.0,
+        "std": float(cast(float, returns.std(ddof=1))) if len(returns) > 1 else 0.0,
     }
 
 
@@ -178,7 +179,10 @@ def adf_summary(close: pd.Series) -> dict[str, object]:
     """Augmented Dickey-Fuller test on the price level (log prices)."""
     clean = close.dropna()
     series = np.log(clean[clean > 0])
-    stat, pvalue, _, _, crit, _ = adfuller(series, autolag="AIC")
+    result = cast(tuple, adfuller(series, autolag="AIC"))
+    stat = cast(float, result[0])
+    pvalue = cast(float, result[1])
+    crit = cast(dict[str, float], result[4])
     stationary = pvalue < 0.05
     return {
         "statistic": float(stat),
@@ -190,7 +194,7 @@ def adf_summary(close: pd.Series) -> dict[str, object]:
 
 def acf(returns: pd.Series, nlags: int = 20) -> pd.Series:
     """Autocorrelation of daily returns for lags 0..nlags."""
-    x = returns.values
+    x = returns.to_numpy(dtype=float)
     x = x - x.mean()
     n = len(x)
     var = np.dot(x, x)
@@ -211,9 +215,18 @@ def weekday_effects(returns: pd.Series) -> pd.DataFrame:
             "weekday": dt.dt.dayofweek.values,
         }
     )
-    table = df.groupby("weekday")["return"].agg(
-        mean="mean", hit_rate=lambda s: (s > 0).mean(), count="count"
+    grouped = df.groupby("weekday")["return"]
+    table = pd.DataFrame(
+        {
+            "mean": grouped.mean(),
+            "hit_rate": grouped.apply(lambda s: (s > 0).mean()),
+            "count": grouped.count(),
+        }
     )
+    # A weekday can be missing entirely (e.g. a holiday week); reindex keeps
+    # the table at five rows with NaN stats and a zero count for that day.
+    table = table.reindex(range(5))
+    table["count"] = table["count"].fillna(0)
     table.index = ["Mon", "Tue", "Wed", "Thu", "Fri"]
     return table.rename_axis("weekday").reset_index()
 
@@ -269,11 +282,11 @@ def month_effects(close: pd.Series) -> pd.DataFrame:
 # Technical indicators
 # --------------------------------------------------------------------------- #
 def sma(close: pd.Series, window: int) -> pd.Series:
-    return close.rolling(window).mean()
+    return cast(pd.Series, close.rolling(window).mean())
 
 
 def ema(close: pd.Series, span: int) -> pd.Series:
-    return close.ewm(span=span, adjust=False).mean()
+    return cast(pd.Series, close.ewm(span=span, adjust=False).mean())
 
 
 def rsi(close: pd.Series, period: int = 14) -> pd.Series:
@@ -284,7 +297,7 @@ def rsi(close: pd.Series, period: int = 14) -> pd.Series:
     avg_loss = loss.ewm(alpha=1 / period, adjust=False).mean()
     # avg_loss == 0 -> rs = inf -> RSI 100; 0/0 on the first row -> NaN -> 50
     rs = avg_gain / avg_loss
-    out = 100 - 100 / (1 + rs)
+    out = cast(pd.Series, 100 - 100 / (1 + rs))
     return out.fillna(50)
 
 
@@ -352,7 +365,8 @@ def latest_signals(close: pd.Series) -> dict[str, str]:
             f"price {trend} the 200-day average (long-term {'uptrend' if trend == 'above' else 'downtrend'})"
         )
     crosses = crossover_dates(s20, s200)
-    recent = crosses[crosses["Date"] > close.index[-1] - pd.Timedelta(days=365)]
+    cutoff = cast(pd.Timestamp, close.index[-1]) - pd.Timedelta(days=365)
+    recent = crosses[crosses["Date"] > cutoff]
     if len(recent):
         last = recent.iloc[-1]
         out["SMA 20/200 cross"] = (

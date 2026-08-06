@@ -4,8 +4,8 @@ Everything in this module is pure Python (no Streamlit), so the exact same
 code runs in the app, in tests, and on the CI runner.
 """
 
-from dataclasses import dataclass, field
-from typing import Any, Optional
+from dataclasses import dataclass
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -17,7 +17,6 @@ from ..constants import (
     LSTM_DROPOUT,
     LSTM_UNITS,
     MOVING_AVERAGE_WINDOW,
-    RANDOM_SEED,
     TRAIN_TEST_SPLIT_RATIO,
     VALIDATION_SPLIT,
 )
@@ -49,8 +48,8 @@ class AnalysisResult:
     future: pd.DataFrame
     lstm_metrics: dict[str, float]
     baselines: dict[str, dict[str, float]]
+    baselines_frame: pd.DataFrame
     test_start_index: int
-    device: str = field(default="CPU")
 
     @property
     def forecast_with_change(self) -> pd.DataFrame:
@@ -63,16 +62,6 @@ class PipelineError(RuntimeError):
     """Raised when a step of the pipeline fails (message is user-facing)."""
 
 
-def _evaluate_lstm(
-    model: Any, x_test: np.ndarray, y_test: np.ndarray, scaler: MinMaxScaler
-) -> dict[str, float]:
-    predictions = predict_on_test(model, x_test, y_test, scaler)
-    actual = predictions["actual"].values
-    predicted = predictions["predicted"].values
-
-    return regression_metrics(actual, predicted)
-
-
 def run_analysis(
     symbol: str,
     start_date: Any,
@@ -81,7 +70,7 @@ def run_analysis(
     future_steps: int,
     epochs: int,
     batch_size: int,
-    progress_callback: Optional[ProgressReporterCallback] = None,
+    progress_callback: ProgressReporterCallback | None = None,
 ) -> AnalysisResult:
     """Run the full pipeline for the given parameters and return the result."""
     data = download_stock_data(symbol, start_date, end_date)
@@ -91,8 +80,8 @@ def run_analysis(
             "Check the ticker and date range."
         )
 
-    close = data["Close"]
-    scaled, scaler = scale_data(close.values.reshape(-1, 1))
+    close = cast(pd.Series, data["Close"])
+    scaled, scaler = scale_data(close.to_numpy().reshape(-1, 1))
     sequences = create_sequences(scaled, sequence_length)
     if sequences is None:
         raise PipelineError(
@@ -126,7 +115,10 @@ def run_analysis(
     )
 
     test_predictions = predict_on_test(model, x_test, y_test, scaler)
-    lstm_metrics = _evaluate_lstm(model, x_test, y_test, scaler)
+    lstm_metrics = regression_metrics(
+        test_predictions["actual"].to_numpy(),
+        test_predictions["predicted"].to_numpy(),
+    )
 
     future = make_future_predictions(
         model,
@@ -134,9 +126,12 @@ def run_analysis(
         scaler,
         sequence_length,
         future_steps,
-        last_date=close.index[-1],
+        last_date=cast(pd.Timestamp, close.index[-1]),
     )
 
+    baseline_frame = baselines.baseline_forecasts(
+        close, test_start_index, MOVING_AVERAGE_WINDOW
+    )
     baseline_metrics = baselines.evaluate_baselines(
         close, test_start_index, MOVING_AVERAGE_WINDOW
     )
@@ -144,16 +139,10 @@ def run_analysis(
     return AnalysisResult(
         symbol=symbol,
         params={
-            "start_date": start_date,
-            "end_date": end_date,
             "sequence_length": sequence_length,
             "future_steps": future_steps,
             "epochs": epochs,
             "batch_size": batch_size,
-            "split_ratio": TRAIN_TEST_SPLIT_RATIO,
-            "validation_split": VALIDATION_SPLIT,
-            "lstm_units": LSTM_UNITS,
-            "random_seed": RANDOM_SEED,
         },
         data=data,
         close=close,
@@ -164,5 +153,6 @@ def run_analysis(
         future=future,
         lstm_metrics=lstm_metrics,
         baselines=baseline_metrics,
+        baselines_frame=baseline_frame,
         test_start_index=test_start_index,
     )

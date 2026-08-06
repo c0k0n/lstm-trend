@@ -80,15 +80,12 @@ def _metrics_table(series: dict[str, pd.Series]) -> pd.DataFrame:
     rows = {}
     for name, close in series.items():
         stats = analytics.comparison_frame(close)
-        stats["Sharpe"] = analytics.sharpe_ratio(analytics.daily_returns(close))
         rows[name] = {**stats, "Trend": _sparkline(close)}
     return pd.DataFrame(rows).T
 
 
 def _sparkline(close: pd.Series) -> list[float]:
     """Downsampled normalized close, for the inline trend mini-chart."""
-    import numpy as np
-
     sample = close.iloc[:: max(1, len(close) // 40)].to_numpy(dtype=float)
     lo, hi = sample.min(), sample.max()
     if hi - lo < 1e-12:
@@ -100,7 +97,6 @@ def render() -> None:
     st.set_page_config(
         page_title=f"Compare — {APP_TITLE} | Multi-ticker side-by-side analysis",
         page_icon="⚖️",
-        layout="wide",
     )
     st.title("⚖️ Compare")
     st.text(

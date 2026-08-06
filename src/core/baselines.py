@@ -1,8 +1,5 @@
 """Simple benchmark forecasts used to put the LSTM results into perspective."""
 
-from typing import Dict
-
-import numpy as np
 import pandas as pd
 
 from .metrics import regression_metrics
@@ -31,17 +28,29 @@ def moving_average_forecast(
     return pd.Series(values, index=test_index)
 
 
+def baseline_forecasts(
+    close: pd.Series, test_start_index: int, window: int
+) -> pd.DataFrame:
+    """Test-window forecasts from both baselines, indexed by test date."""
+    return pd.DataFrame(
+        {
+            NAIVE: naive_forecast(close, test_start_index).values,
+            MOVING_AVERAGE: moving_average_forecast(
+                close, test_start_index, window
+            ).values,
+        },
+        index=close.index.to_numpy()[test_start_index:],
+    )
+
+
 def evaluate_baselines(
     close: pd.Series, test_start_index: int, window: int
-) -> Dict[str, Dict[str, float]]:
+) -> dict[str, dict[str, float]]:
     """Evaluate naive and moving-average forecasts on the test window."""
-    test_index = close.index[test_start_index:]
-    actual = close.iloc[test_start_index:].values
-
-    naive = naive_forecast(close, test_start_index)
-    moving = moving_average_forecast(close, test_start_index, window)
+    actual = close.iloc[test_start_index:].to_numpy()
+    frame = baseline_forecasts(close, test_start_index, window)
 
     return {
-        NAIVE: regression_metrics(actual, naive.values),
-        MOVING_AVERAGE: regression_metrics(actual, moving.values),
+        NAIVE: regression_metrics(actual, frame[NAIVE].to_numpy()),
+        MOVING_AVERAGE: regression_metrics(actual, frame[MOVING_AVERAGE].to_numpy()),
     }
