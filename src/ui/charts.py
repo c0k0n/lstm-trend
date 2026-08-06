@@ -57,17 +57,28 @@ def plot_volume(volume: pd.Series) -> go.Figure:
 
 
 def plot_candlestick(data: pd.DataFrame) -> go.Figure:
+    df = data[["Open", "High", "Low", "Close"]]
+    aggregated = False
+    if len(df) > 260:
+        # Too many daily bars to read: aggregate into weekly OHLC
+        df = (
+            df.resample("W-FRI")
+            .agg({"Open": "first", "High": "max", "Low": "min", "Close": "last"})
+            .dropna()
+        )
+        aggregated = True
     fig = go.Figure(
         go.Candlestick(
-            x=data.index,
-            open=data["Open"],
-            high=data["High"],
-            low=data["Low"],
-            close=data["Close"],
+            x=df.index,
+            open=df["Open"],
+            high=df["High"],
+            low=df["Low"],
+            close=df["Close"],
             name="OHLC",
         )
     )
-    fig.update_layout(**_layout("Candlestick chart", yaxis_title="Price (USD)"))
+    title = "Candlestick chart (weekly bars)" if aggregated else "Candlestick chart"
+    fig.update_layout(**_layout(title, yaxis_title="Price (USD)"))
     return fig
 
 
@@ -579,6 +590,17 @@ def plot_bollinger(close: pd.Series) -> go.Figure:
 def plot_volume_analysis(data: pd.DataFrame) -> go.Figure:
     close = data["Close"]
     volume = data["Volume"]
+    aggregated = False
+    if len(data) > 260:
+        # Long histories need aggregated bars or they become unreadable
+        agg = (
+            data[["Close", "Volume"]]
+            .resample("W-FRI")
+            .agg({"Close": "last", "Volume": "sum"})
+            .dropna()
+        )
+        close, volume = agg["Close"], agg["Volume"]
+        aggregated = True
     ret = close.pct_change().fillna(0)
     colors = [COLOR_PREDICTED if v >= 0 else "#EF5350" for v in ret]
     fig = go.Figure()
@@ -591,9 +613,8 @@ def plot_volume_analysis(data: pd.DataFrame) -> go.Figure:
             opacity=0.7,
         )
     )
-    fig.update_layout(
-        **_layout("Volume coloured by daily move", yaxis_title="Volume", height=340)
-    )
+    title = "Volume by weekly move" if aggregated else "Volume coloured by daily move"
+    fig.update_layout(**_layout(title, yaxis_title="Volume", height=340))
     return fig
 
 
