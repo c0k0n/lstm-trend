@@ -165,6 +165,7 @@ def render() -> None:
             f"beyond 'repeat yesterday'."
         )
         icon = "✅"
+        verdict_badge = ("LSTM wins this test window", "green")
     else:
         verdict = (
             f"The LSTM did **not** beat the simpler baselines here "
@@ -173,8 +174,10 @@ def render() -> None:
             f"stock prices are noisy and a simple rule is a strong opponent."
         )
         icon = "⚠️"
+        verdict_badge = ("Baselines win this time", "orange")
     with st.container(border=True):
         st.markdown(f"### {icon} Verdict")
+        st.badge(verdict_badge[0], color=verdict_badge[1])
         st.markdown(verdict)
 
     with st.expander("How to read the numbers"):

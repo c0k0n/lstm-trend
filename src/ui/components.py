@@ -127,6 +127,24 @@ def render_hero() -> None:
         "An empirical study of LSTM forecasting on stock prices — built as a "
         "final year project. This is a learning tool, not investment advice."
     )
+    with st.container(horizontal=True):
+        st.badge(
+            "Final year project", color="violet", help="Built as a student project."
+        )
+        st.badge(
+            "Keras 3 · LSTM",
+            color="green",
+            help="Two-layer LSTM trained in your browser session.",
+        )
+        st.badge(
+            "PyTorch backend", color="orange", help="GPU acceleration when available."
+        )
+        st.badge("Streamlit", color="red", help="Built entirely with Streamlit.")
+        st.badge(
+            "Not investment advice",
+            color="gray",
+            help="An empirical study, not a trading tool.",
+        )
     st.space("medium")
 
 

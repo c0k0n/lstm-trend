@@ -18,27 +18,60 @@ from ..components import load_data_cached
 def _controls() -> tuple[list[str], datetime.date, datetime.date]:
     col1, col2, col3 = st.columns([3, 2, 2])
     with col1:
-        symbols = st.multiselect(
-            "Tickers to compare",
-            options=SUGGESTED_SYMBOLS,
-            default=SUGGESTED_SYMBOLS[:3],
-            key="compare_symbols",
-            help="Pick 2–6 tickers. Suggestions plus a custom one below.",
-        )
-        custom = (
-            st.text_input(
-                "Add custom ticker", placeholder="e.g. SPY", key="compare_custom"
+        watch = _watchlist()
+        if watch:
+            symbols = watch
+            st.caption(
+                f"Using the watchlist ({len(watch)} tickers). Untick "
+                "**Use watchlist** below to pick manually."
             )
-            .strip()
-            .upper()
-        )
-        if custom and custom not in symbols:
-            symbols.append(custom)
+        else:
+            symbols = st.multiselect(
+                "Tickers to compare",
+                options=SUGGESTED_SYMBOLS,
+                default=SUGGESTED_SYMBOLS[:3],
+                key="compare_symbols",
+                help="Pick 2–6 tickers. Suggestions plus a custom one below.",
+            )
+            custom = (
+                st.text_input(
+                    "Add custom ticker", placeholder="e.g. SPY", key="compare_custom"
+                )
+                .strip()
+                .upper()
+            )
+            if custom and custom not in symbols:
+                symbols.append(custom)
     with col2:
         start = st.date_input("Start", DEFAULT_START_DATE, key="compare_start")
     with col3:
         end = st.date_input("End", DEFAULT_END_DATE, key="compare_end")
     return symbols, start, end
+
+
+def _watchlist() -> list[str]:
+    """Editable watchlist that can replace the manual multiselect."""
+    with st.expander("📋 Watchlist", expanded=False):
+        st.caption(
+            "Edit the rows to build your own list of tickers, then tick "
+            "*Use watchlist* below to compare exactly these."
+        )
+        edited = st.data_editor(
+            pd.DataFrame({"Symbol": SUGGESTED_SYMBOLS}),
+            column_config={
+                "Symbol": st.column_config.TextColumn(
+                    "Symbol", help="Ticker symbol, e.g. AAPL or SPY."
+                )
+            },
+            num_rows="dynamic",
+            hide_index=True,
+            width="stretch",
+            key="compare_watchlist",
+        )
+        if not st.checkbox("Use watchlist for comparison", key="compare_use_watchlist"):
+            return []
+        symbols = [str(s).strip().upper() for s in edited["Symbol"] if str(s).strip()]
+        return [s for s in dict.fromkeys(symbols)]
 
 
 def _metrics_table(series: dict[str, pd.Series]) -> pd.DataFrame:
@@ -48,8 +81,19 @@ def _metrics_table(series: dict[str, pd.Series]) -> pd.DataFrame:
     for name, close in series.items():
         stats = analytics.comparison_frame(close)
         stats["Sharpe"] = analytics.sharpe_ratio(analytics.daily_returns(close))
-        rows[name] = stats
+        rows[name] = {**stats, "Trend": _sparkline(close)}
     return pd.DataFrame(rows).T
+
+
+def _sparkline(close: pd.Series) -> list[float]:
+    """Downsampled normalized close, for the inline trend mini-chart."""
+    import numpy as np
+
+    sample = close.iloc[:: max(1, len(close) // 40)].to_numpy(dtype=float)
+    lo, hi = sample.min(), sample.max()
+    if hi - lo < 1e-12:
+        return [0.5] * len(sample)
+    return ((sample - lo) / (hi - lo)).round(4).tolist()
 
 
 def render() -> None:
@@ -109,6 +153,20 @@ def render() -> None:
                 "Positive days": "{:.1%}",
             }
         ),
+        column_config={
+            "Trend": st.column_config.LineChartColumn(
+                "Price trend",
+                width="medium",
+                help="Normalized close over the window — a quick visual of the path.",
+            ),
+            "Positive days": st.column_config.ProgressColumn(
+                "Positive days",
+                min_value=0,
+                max_value=1,
+                format="%.0f%%",
+                help="Share of trading days that ended up.",
+            ),
+        },
         hide_index=False,
         width="stretch",
     )

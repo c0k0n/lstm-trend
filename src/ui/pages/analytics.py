@@ -238,7 +238,24 @@ def _risk(data: pd.DataFrame) -> None:
         events["Start"] = events["Start"].map(lambda d: d.date())
         events["Trough"] = events["Trough"].map(lambda d: d.date())
         events["End"] = events["End"].map(lambda d: d.date())
-        st.dataframe(events, hide_index=True, width="stretch")
+        page_size = 10
+        pages = max(1, (len(events) + page_size - 1) // page_size)
+        page = st.pagination(
+            pages,
+            default=1,
+            max_visible_pages=5,
+            key="drawdown_pages",
+        )
+        start = (page - 1) * page_size
+        st.caption(
+            f"**{len(events)} drawdown events** — showing "
+            f"{start + 1}–{min(start + page_size, len(events))}"
+        )
+        st.dataframe(
+            events.iloc[start : start + page_size],
+            hide_index=True,
+            width="stretch",
+        )
     else:
         st.caption("No drawdown of 5% or deeper in this window.")
 
