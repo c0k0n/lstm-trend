@@ -332,20 +332,20 @@ def render() -> None:
     st.space("small")
 
     tabs = st.tabs(TABS, on_change="rerun")
-    with tabs[0]:
-        if tabs[0].open:
+    if tabs[0].open:
+        with tabs[0]:
             _overview(data)
-    with tabs[1]:
-        if tabs[1].open:
+    if tabs[1].open:
+        with tabs[1]:
             _returns(data)
-    with tabs[2]:
-        if tabs[2].open:
+    if tabs[2].open:
+        with tabs[2]:
             _seasonality(data)
-    with tabs[3]:
-        if tabs[3].open:
+    if tabs[3].open:
+        with tabs[3]:
             _technicals(data)
-    with tabs[4]:
-        if tabs[4].open:
+    if tabs[4].open:
+        with tabs[4]:
             _risk(data)
 
 

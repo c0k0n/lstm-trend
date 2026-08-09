@@ -45,8 +45,7 @@ The project has kept growing since then:
   work, an empirical Findings page, and an About page,
 - the analysis is grounded in **baselines**, so the LSTM's numbers are always
   shown next to 'repeat yesterday' and a moving average,
-- everything runs on **uv** for a clean, reproducible environment, with
-  **GitHub Actions CI** checking type and formatting on every push.
+- everything runs on **uv** for a clean, reproducible environment.
 
 One thing I want to be upfront about: this is a learning project, not a trading
 tool. Stock prediction with a single LSTM on just the closing price is a hard,
@@ -131,8 +130,7 @@ In plain words:
   refreshes itself, and a one-time confetti celebration after the first run.
 - A "how to read the charts" dialog on the Findings page and a theme-aware
   app footer with the GitHub link.
-- Self-hosted Inter font, rounded widget corners, robots.txt and sitemap for
-  the deployed site.
+- Rounded widget corners via Streamlit theming.
 
 **Analytics (EDA)**
 
@@ -179,7 +177,6 @@ In plain words:
 | scipy            | Distributions, KDE, Q-Q plots, moments, ADF test          |
 | Plotly           | Interactive charts                                        |
 | uv               | Environment and dependency management                     |
-| GitHub Actions   | CI: type-check and format check                            |
 
 ## How it works
 
@@ -241,11 +238,8 @@ lstm-trend/
 │       ├── components.py     # Sidebar config, progress UI, result rendering
 │       └── pages/            # dashboard, analytics, compare, findings, methodology, about
 │           └── nav.py        # Page registry (st.Page objects) for navigation
-├── .github/workflows/ci.yml  # CI: uv sync, check, format
-├── .devcontainer/devcontainer.json  # VS Code / Codespaces: uv + Python 3.13
 ├── .python-version           # Pins Python 3.13 for uv
-├── .streamlit/config.toml    # Dark theme, Inter font, static serving
-├── static/                   # robots.txt, sitemap.xml, self-hosted Inter font
+├── .streamlit/config.toml    # Dark theme, widget borders, usage stats off
 ├── AGENTS.md                 # Instructions for AI coding tools
 ├── streamlitinfolinks.txt    # Index of official Streamlit docs links (dev reference)
 ├── pyproject.toml            # Project metadata + dependencies (uv)
@@ -286,9 +280,6 @@ A few notes:
 - The first run downloads PyTorch, so be patient if `uv sync` takes a while.
 - The first analysis downloads data and trains a model, which takes a bit of
   time too — the progress bar will keep you company.
-- Prefer an isolated environment? The repo ships a `.devcontainer` that
-  provisions uv + Python 3.13 and launches the app automatically — open it in
-  VS Code with the Dev Containers extension or in GitHub Codespaces.
 
 ## GPU acceleration
 
@@ -367,17 +358,16 @@ the moving-average window, and the plot colours.
   Cloud.
 - **2026 — latest chapters.** Migrated to Keras 3 + PyTorch (GPU support
   without the `LD_LIBRARY_PATH` hacks), grew into a multipage app with deep
-  analytics and comparison pages, added baseline comparisons and an empirical
-  Findings page, and added GitHub Actions CI.
+  analytics and comparison pages, and added baseline comparisons and an empirical
+  Findings page.
 - **2026 — modern UI pass.** Lazy tab loading, dialogs, model-settings forms,
-  deep-linkable URLs, skeletons and streaming status, self-hosted fonts and a
-  theme-aware footer.
+  deep-linkable URLs, skeletons and streaming status, and a theme-aware footer.
 - **2026 — quality pass.** A full audit of the codebase: fixed the moving
   average baseline (it was scored against the wrong window), a crash on
   weekday tables when a weekday is missing, a broken deep-link path for
   custom horizons, and a hard-coded footer link; removed dead code and
   leftover dependencies, deduplicated chart colours and page configuration,
-  modernized the typing, and rewrote the devcontainer for uv + Python 3.13.
+  and modernized the typing.
 - **2026 — second quality pass.** Found and fixed the worst bug in the app: the
   drawdown detector silently dropped every drawdown event (a 10-day −50% crash
   reported "no drawdowns"). Also replaced magic calendar lookbacks with exact
@@ -385,8 +375,13 @@ the moving-average window, and the plot colours.
   mismatched bar colours in the RMSE chart, made sequence creation zero-copy
   and baselines vectorized, seeded every training run (the docs always claimed
   it), added a minimum-data guard so tiny datasets fail with a friendly error
-  instead of a Keras crash, adapted to Keras 3.15's string `verbose` API and
-  pandas 3.0, and deleted the now-redundant `run.sh`.
+   instead of a Keras crash, adapted to Keras 3.15's string `verbose` API and
+   pandas 3.0, and deleted the now-redundant `run.sh`.
+- **2026 — third quality pass.** Removed unused imports and dead parameters,
+  replaced a fragile `id()`-based session key with a stable symbol-based key,
+  added type annotations to chart and findings functions, fixed the lazy tab
+  loading pattern, corrected the project structure in the README, and removed
+  stale references to files that no longer exist.
 
 The git history still contains all the earlier commits, if you ever want to see
 how it evolved.

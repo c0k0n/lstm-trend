@@ -25,7 +25,8 @@ def cumulative_return(close: pd.Series) -> float:
     return float(close.iloc[-1] / close.iloc[0] - 1) if len(close) > 1 else 0.0
 
 
-def annualized_return(close: pd.Series, periods: int = TRADING_DAYS) -> float:
+def annualized_return(close: pd.Series) -> float:
+    """Compound annual growth rate from first to last close."""
     if len(close) < 2:
         return 0.0
     first = cast(pd.Timestamp, close.index[0])
@@ -229,7 +230,6 @@ def acf(returns: pd.Series, nlags: int = 20) -> pd.Series:
     """Autocorrelation of daily returns for lags 0..nlags."""
     x = returns.to_numpy(dtype=float)
     x = x - x.mean()
-    n = len(x)
     var = np.dot(x, x)
     out = np.ones(nlags + 1)
     for k in range(1, nlags + 1):

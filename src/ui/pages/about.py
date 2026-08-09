@@ -37,8 +37,7 @@ def render() -> None:
           multi-ticker work, an empirical Findings page, and this page,
         - the analysis is grounded in **baselines** — every LSTM result is
           shown next to 'repeat yesterday' and a moving average,
-        - everything runs on **uv** with locked dependencies and GitHub
-          Actions CI.
+        - everything runs on **uv** with locked dependencies.
         """
     )
 

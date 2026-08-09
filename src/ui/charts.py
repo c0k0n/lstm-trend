@@ -1,6 +1,8 @@
 """All Plotly chart builders, consistently styled for the app theme."""
 
-from typing import Any, cast
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 import pandas as pd
@@ -17,6 +19,9 @@ from ..constants import (
     PLOT_GRID_COLOR,
 )
 from ..core.baselines import MOVING_AVERAGE, NAIVE
+
+if TYPE_CHECKING:
+    from ..core.pipeline import AnalysisResult
 
 _DARK_THEME = dict(
     template="plotly_dark",
@@ -157,7 +162,7 @@ def plot_test_predictions(
     return fig
 
 
-def plot_forecast(result) -> go.Figure:
+def plot_forecast(result: "AnalysisResult") -> go.Figure:
     """Historical close + test predictions + future forecast in one view."""
     fig = go.Figure()
     fig.add_trace(
@@ -193,7 +198,7 @@ def plot_forecast(result) -> go.Figure:
     return fig
 
 
-def plot_baseline_comparison(result) -> go.Figure:
+def plot_baseline_comparison(result: "AnalysisResult") -> go.Figure:
     """Actual test prices against every forecast (LSTM + baselines)."""
     test_dates = result.close.index[result.test_start_index :]
     fig = go.Figure()
@@ -237,7 +242,7 @@ def plot_baseline_comparison(result) -> go.Figure:
     return fig
 
 
-def plot_metric_bars(result) -> go.Figure:
+def plot_metric_bars(result: "AnalysisResult") -> go.Figure:
     """Horizontal bar chart of RMSE per method."""
     color_by_method = {
         "LSTM": COLOR_PREDICTED,

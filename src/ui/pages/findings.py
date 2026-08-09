@@ -1,7 +1,10 @@
 """Findings page: metrics, baselines and the empirical story."""
 
+from __future__ import annotations
+
 import time
 from collections.abc import Iterator
+from typing import TYPE_CHECKING
 
 import pandas as pd
 import streamlit as st
@@ -11,6 +14,9 @@ from ...core.metrics import METRIC_NAMES
 from ...constants import APP_TITLE
 from .. import charts
 from ..components import get_analysis
+
+if TYPE_CHECKING:
+    from ...core.pipeline import AnalysisResult
 
 METRIC_LABELS = {
     "mse": "MSE",
@@ -50,9 +56,9 @@ def _verdict_stream(text: str) -> Iterator[str]:
         time.sleep(0.02)
 
 
-def _render_verdict(text: str, result) -> None:
+def _render_verdict(text: str, result: AnalysisResult) -> None:
     """Stream the verdict once per result, then show it statically."""
-    stream_key = f"verdict_streamed_{id(result)}"
+    stream_key = f"verdict_streamed_{result.symbol}"
     if st.session_state.get(stream_key):
         st.markdown(text)
     else:
@@ -60,7 +66,8 @@ def _render_verdict(text: str, result) -> None:
         st.session_state[stream_key] = True
 
 
-def _metrics_table(result) -> pd.DataFrame:
+def _metrics_table(result: AnalysisResult) -> pd.DataFrame:
+    """Build a DataFrame of metrics for LSTM and baseline methods."""
     rows = [{"Method": "LSTM", **result.lstm_metrics}]
     for name, metrics in result.baselines.items():
         rows.append({"Method": name, **metrics})

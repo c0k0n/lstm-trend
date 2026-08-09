@@ -10,11 +10,7 @@ from typing import Any, cast
 import keras
 import pandas as pd
 
-from .baselines import (
-    MOVING_AVERAGE,
-    baseline_forecasts,
-    evaluate_baselines,
-)
+from .baselines import baseline_forecasts, evaluate_baselines
 from .callbacks import ProgressReporterCallback
 from .data_loader import download_stock_data
 from .lstm_model import (
