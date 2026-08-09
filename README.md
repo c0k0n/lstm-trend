@@ -45,9 +45,8 @@ The project has kept growing since then:
   work, an empirical Findings page, and an About page,
 - the analysis is grounded in **baselines**, so the LSTM's numbers are always
   shown next to 'repeat yesterday' and a moving average,
-- the project has a proper **test suite** (unit tests + AppTest end-to-end
-  checks) wired into **GitHub Actions CI**,
-- everything runs on **uv** for a clean, reproducible environment.
+- everything runs on **uv** for a clean, reproducible environment, with
+  **GitHub Actions CI** checking type and formatting on every push.
 
 One thing I want to be upfront about: this is a learning project, not a trading
 tool. Stock prediction with a single LSTM on just the closing price is a hard,
@@ -177,12 +176,10 @@ In plain words:
 | pandas / numpy   | Data wrangling and numerical work                         |
 | Keras 3 + PyTorch| Building and training the LSTM model                      |
 | scikit-learn     | MinMaxScaler, MSE and R² metrics                          |
-| scipy            | Distributions, KDE, Q-Q plots, moments                    |
-| statsmodels      | Augmented Dickey–Fuller stationarity test                 |
+| scipy            | Distributions, KDE, Q-Q plots, moments, ADF test          |
 | Plotly           | Interactive charts                                        |
 | uv               | Environment and dependency management                     |
-| pytest           | Unit tests and Streamlit AppTest end-to-end tests         |
-| GitHub Actions   | CI: type-check, format check, tests                        |
+| GitHub Actions   | CI: type-check and format check                            |
 
 ## How it works
 
@@ -221,9 +218,7 @@ A few details worth knowing:
 - **A quiet terminal.** PyTorch's cuDNN LSTM path prints a "weights are not
   contiguous" hint on every forward pass; it is a performance note we can't act
   on (Keras calls the functional PyTorch API), so it is filtered out in
-  `src/core/lstm_model.py`. The test suite silences the same warning plus a
-  NumPy copy-keyword deprecation and a `torch.jit` deprecation hint via
-  `filterwarnings` in `pyproject.toml`.
+  `src/core/lstm_model.py`.
 
 ## Project structure
 
@@ -246,13 +241,11 @@ lstm-trend/
 │       ├── components.py     # Sidebar config, progress UI, result rendering
 │       └── pages/            # dashboard, analytics, compare, findings, methodology, about
 │           └── nav.py        # Page registry (st.Page objects) for navigation
-├── tests/                    # pytest unit tests + AppTest E2E
-├── .github/workflows/ci.yml  # CI: uv sync, check, format, unit tests
+├── .github/workflows/ci.yml  # CI: uv sync, check, format
 ├── .devcontainer/devcontainer.json  # VS Code / Codespaces: uv + Python 3.13
 ├── .python-version           # Pins Python 3.13 for uv
 ├── .streamlit/config.toml    # Dark theme, Inter font, static serving
 ├── static/                   # robots.txt, sitemap.xml, self-hosted Inter font
-├── assets/logo.svg           # Sidebar logo
 ├── AGENTS.md                 # Instructions for AI coding tools
 ├── streamlitinfolinks.txt    # Index of official Streamlit docs links (dev reference)
 ├── pyproject.toml            # Project metadata + dependencies (uv)
@@ -315,50 +308,6 @@ entry point sets `KERAS_BACKEND=torch` itself, so
 `uv run streamlit run streamlit_app.py` is all it takes (any pre-set
 `KERAS_BACKEND` value wins).
 
-## Tests
-
-```bash
-# Everything, no network access needed — 127 tests in ~23 seconds
-uv run pytest tests -q
-
-# Unit tests only (same thing, minus the AppTest end-to-end layer)
-uv run pytest tests -m "not e2e" -q
-```
-
-The suite is fully offline and deterministic: the network is mocked (both the
-Yahoo Finance download and the Streamlit app's data layer), models train on
-tiny seeded synthetic series, and every test has a fixed random seed.
-
-The suite covers:
-
-- unit tests for scaling/sequence creation, metrics, and the baselines
-  (`tests/test_preprocessing.py`, `test_metrics.py`, `test_baselines.py`),
-- a full suite for the analytics module: returns, risk metrics, drawdowns
-  (including multi-day episodes and empty cases), seasonality, stationarity,
-  every technical indicator, and an edge case where an entire weekday is
-  missing from the data (`tests/test_analytics.py`),
-- every Plotly chart builder rendered end-to-end plus regression tests on
-  trace names and colours (`tests/test_charts.py`),
-- the LSTM model itself: shape checks, training history, scaling inversion,
-  future-date generation (`tests/test_lstm_model.py`), the progress callback
-  (`tests/test_callbacks.py`), and the yfinance download layer including its
-  multi-level-column flattening and error handling (`tests/test_data_loader.py`),
-- a full pipeline test on synthetic data with a tiny model, including the
-  combined baseline-forecast frame and a guard against too-little-data runs
-  (`tests/test_pipeline.py`),
-- AppTest end-to-end tests that boot the real app and click through a full
-  analysis (with the network mocked, so no live downloads): the Analytics,
-  Compare and Findings pages, lazy tabs, the model-settings form, deep-link
-  query params (preset and custom horizons), the sidebar settings caption,
-  the footer's GitHub link, and the verdict feedback (`tests/test_app.py`).
-
-The e2e tests are tagged `@pytest.mark.e2e` (registered in `pyproject.toml`
-so the run stays warning-free), and a few known-benchmark warnings from
-NumPy/PyTorch/Keras are filtered out for the suite via `filterwarnings`.
-
-CI runs on every push to `main` via GitHub Actions: `uv sync`, `uv check`
-(type-check), `uv format --check`, then the unit tests (`-m "not e2e"`).
-
 ## Deploying to Streamlit Community Cloud
 
 The app is already live at <https://lstm-trend.streamlit.app>, deployed on
@@ -419,17 +368,16 @@ the moving-average window, and the plot colours.
 - **2026 — latest chapters.** Migrated to Keras 3 + PyTorch (GPU support
   without the `LD_LIBRARY_PATH` hacks), grew into a multipage app with deep
   analytics and comparison pages, added baseline comparisons and an empirical
-  Findings page, and introduced a test suite with GitHub Actions CI.
+  Findings page, and added GitHub Actions CI.
 - **2026 — modern UI pass.** Lazy tab loading, dialogs, model-settings forms,
   deep-linkable URLs, skeletons and streaming status, self-hosted fonts and a
-  theme-aware footer — with AppTest coverage for all of it.
+  theme-aware footer.
 - **2026 — quality pass.** A full audit of the codebase: fixed the moving
   average baseline (it was scored against the wrong window), a crash on
   weekday tables when a weekday is missing, a broken deep-link path for
   custom horizons, and a hard-coded footer link; removed dead code and
   leftover dependencies, deduplicated chart colours and page configuration,
-  modernized the typing, rewrote the devcontainer for uv + Python 3.13, and
-  grew the test suite with regression and end-to-end coverage.
+  modernized the typing, and rewrote the devcontainer for uv + Python 3.13.
 - **2026 — second quality pass.** Found and fixed the worst bug in the app: the
   drawdown detector silently dropped every drawdown event (a 10-day −50% crash
   reported "no drawdowns"). Also replaced magic calendar lookbacks with exact
@@ -438,9 +386,7 @@ the moving-average window, and the plot colours.
   and baselines vectorized, seeded every training run (the docs always claimed
   it), added a minimum-data guard so tiny datasets fail with a friendly error
   instead of a Keras crash, adapted to Keras 3.15's string `verbose` API and
-  pandas 3.0, deleted the now-redundant `run.sh`, and rewrote the end-to-end
-  tests to run fully offline against mocked data — 127 tests in ~23 seconds,
-  deterministic and network-free.
+  pandas 3.0, and deleted the now-redundant `run.sh`.
 
 The git history still contains all the earlier commits, if you ever want to see
 how it evolved.

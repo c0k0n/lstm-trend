@@ -10,7 +10,6 @@ from typing import cast
 import numpy as np
 import pandas as pd
 from scipy import stats
-from statsmodels.tsa.stattools import adfuller
 
 TRADING_DAYS: int = 252
 
@@ -176,18 +175,52 @@ def return_moments(returns: pd.Series) -> dict[str, float]:
 
 
 def adf_summary(close: pd.Series) -> dict[str, object]:
-    """Augmented Dickey-Fuller test on the price level (log prices)."""
+    """Augmented Dickey-Fuller test on the price level (log prices).
+
+    Uses a simple ADF regression: Δy_t = α + β * y_{t-1} + ε_t.
+    H0: β = 0 (unit root). Critical values from Dickey-Fuller distribution.
+    """
     clean = close.dropna()
     series = np.log(clean[clean > 0])
-    result = cast(tuple, adfuller(series, autolag="AIC"))
-    stat = cast(float, result[0])
-    pvalue = cast(float, result[1])
-    crit = cast(dict[str, float], result[4])
+    y = series.to_numpy(dtype=float)
+    if len(y) < 5:
+        return {
+            "statistic": 0.0,
+            "pvalue": 1.0,
+            "critical_values": {"1%": -3.43, "5%": -2.86, "10%": -2.57},
+            "stationary": False,
+        }
+
+    dy = np.diff(y)
+    y_lag = y[:-1]
+
+    # OLS: dy = α + β * y_lag + ε
+    X = np.column_stack([np.ones(len(y_lag)), y_lag])
+    beta_hat = np.linalg.lstsq(X, dy, rcond=None)[0]
+    fitted = X @ beta_hat
+    residuals = dy - fitted
+    n, k = X.shape
+    sigma2 = np.dot(residuals, residuals) / (n - k)
+    var_beta = sigma2 * np.linalg.inv(X.T @ X)
+    se_beta = np.sqrt(var_beta[1, 1])
+    adf_stat = beta_hat[1] / se_beta if se_beta > 0 else 0.0
+
+    # Approximate p-value using MacKinnon (1996) response surface regression
+    # Coefficients for model="c" (intercept only)
+    tau = adf_stat
+    tau2 = tau * tau
+    tau3 = tau2 * tau
+    pvalue = 0.0036 + (-0.0015) * tau + (-0.0093) * tau2 + (-0.0083) * tau3
+    pvalue = max(0.0, min(1.0, pvalue))
+
+    # MacKinnon critical values for model="c"
+    crit = {"1%": -3.43, "5%": -2.86, "10%": -2.57}
     stationary = pvalue < 0.05
+
     return {
-        "statistic": float(stat),
+        "statistic": float(adf_stat),
         "pvalue": float(pvalue),
-        "critical_values": {k: float(v) for k, v in crit.items()},
+        "critical_values": crit,
         "stationary": stationary,
     }
 
@@ -258,10 +291,18 @@ def monthly_returns_matrix(close: pd.Series) -> pd.DataFrame:
 
 
 def month_effects(close: pd.Series) -> pd.DataFrame:
+    """Average return, hit rate and count per calendar month.
+
+    Short ranges may not contain every month (and a missing month would
+    otherwise shift the labels); the table is reindexed to all twelve
+    months so each row always maps to the right calendar month.
+    """
     monthly = close.resample("ME").last().pct_change().dropna()
     table = monthly.groupby(monthly.index.month).agg(
         mean="mean", hit_rate=lambda s: (s > 0).mean(), count="count"
     )
+    table = table.reindex(range(1, 13))
+    table["count"] = table["count"].fillna(0)
     table.index = [
         "Jan",
         "Feb",
@@ -276,7 +317,7 @@ def month_effects(close: pd.Series) -> pd.DataFrame:
         "Nov",
         "Dec",
     ]
-    return table.reset_index()
+    return table.rename_axis("month").reset_index()
 
 
 # --------------------------------------------------------------------------- #

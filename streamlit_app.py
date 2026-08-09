@@ -63,12 +63,6 @@ st.set_page_config(
     },
 )
 
-st.logo(
-    "assets/logo.svg",
-    icon_image="assets/logo.svg",
-    link=GITHUB_URL,
-)
-
 pages = list(get_pages().values())
 
 st.navigation(pages, position="sidebar").run()

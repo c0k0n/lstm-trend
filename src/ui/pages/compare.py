@@ -1,6 +1,7 @@
 """Compare page: multi-ticker side-by-side analysis."""
 
 import datetime
+from typing import cast
 
 import pandas as pd
 import streamlit as st
@@ -16,16 +17,23 @@ from ..components import load_data_cached
 
 
 def _controls() -> tuple[list[str], datetime.date, datetime.date]:
-    col1, col2, col3 = st.columns([3, 2, 2])
-    with col1:
+    row1_col1, row1_col2, row1_col3 = st.columns(3)
+    with row1_col1:
         watch = _watchlist()
-        if watch:
-            symbols = watch
-            st.caption(
-                f"Using the watchlist ({len(watch)} tickers). Untick "
-                "**Use watchlist** below to pick manually."
-            )
-        else:
+    with row1_col2:
+        start = st.date_input("Start", DEFAULT_START_DATE, key="compare_start")
+    with row1_col3:
+        end = st.date_input("End", DEFAULT_END_DATE, key="compare_end")
+
+    if watch:
+        symbols = watch
+        st.caption(
+            f"Using the watchlist ({len(watch)} tickers). Untick "
+            "**Use watchlist** below to pick manually."
+        )
+    else:
+        row2_col1, row2_col2 = st.columns([2, 1])
+        with row2_col1:
             symbols = st.multiselect(
                 "Tickers to compare",
                 options=SUGGESTED_SYMBOLS,
@@ -33,19 +41,19 @@ def _controls() -> tuple[list[str], datetime.date, datetime.date]:
                 key="compare_symbols",
                 help="Pick 2–6 tickers. Suggestions plus a custom one below.",
             )
+        with row2_col2:
             custom = (
                 st.text_input(
-                    "Add custom ticker", placeholder="e.g. SPY", key="compare_custom"
+                    "Add custom ticker",
+                    placeholder="e.g. SPY",
+                    key="compare_custom",
                 )
                 .strip()
                 .upper()
             )
             if custom and custom not in symbols:
                 symbols.append(custom)
-    with col2:
-        start = st.date_input("Start", DEFAULT_START_DATE, key="compare_start")
-    with col3:
-        end = st.date_input("End", DEFAULT_END_DATE, key="compare_end")
+
     return symbols, start, end
 
 
@@ -70,7 +78,11 @@ def _watchlist() -> list[str]:
         )
         if not st.checkbox("Use watchlist for comparison", key="compare_use_watchlist"):
             return []
-        symbols = [str(s).strip().upper() for s in edited["Symbol"] if str(s).strip()]
+        symbols = [
+            str(s).strip().upper()
+            for s in edited["Symbol"]
+            if pd.notna(s) and str(s).strip()
+        ]
         return [s for s in dict.fromkeys(symbols)]
 
 
@@ -112,17 +124,18 @@ def render() -> None:
         return
 
     series: dict[str, pd.Series] = {}
+    loaded = st.session_state.setdefault("compare_loaded", {})
     with st.status("Downloading data…", expanded=False) as status:
         for symbol in symbols:
-            loaded_key = f"compare_loaded_{symbol}_{start}_{end}"
-            if not st.session_state.get(loaded_key):
+            loaded_key = f"{symbol}_{start}_{end}"
+            if not loaded.get(loaded_key):
                 st.skeleton(height=20, width="stretch")
             data = load_data_cached(symbol, start, end)
-            st.session_state[loaded_key] = True
+            loaded[loaded_key] = True
             if data is None or len(data) < 60:
                 st.warning(f"Not enough data for **{symbol}** in this range — skipped.")
                 continue
-            series[symbol] = data["Close"]
+            series[symbol] = cast(pd.Series, data["Close"])
         status.update(
             label=f"Downloaded {len(series)}/{len(symbols)} tickers", state="complete"
         )

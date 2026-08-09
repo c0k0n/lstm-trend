@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://lstm-trend.streamlit.app/sitemap.xml

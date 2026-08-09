@@ -37,8 +37,8 @@ def render() -> None:
           multi-ticker work, an empirical Findings page, and this page,
         - the analysis is grounded in **baselines** — every LSTM result is
           shown next to 'repeat yesterday' and a moving average,
-        - everything runs on **uv** with locked dependencies, unit and E2E
-          tests, and GitHub Actions CI.
+        - everything runs on **uv** with locked dependencies and GitHub
+          Actions CI.
         """
     )
 
@@ -102,17 +102,15 @@ def render() -> None:
                 "Analytics",
                 "Charts",
                 "Environment",
-                "Testing",
             ],
             "Choice": [
                 "Streamlit 1.61 (multipage, st.navigation)",
                 "Keras 3 (LSTM)",
                 "PyTorch (torch.cuda optional)",
                 "Yahoo Finance via yfinance + pandas",
-                "scipy + statsmodels (statistics, ADF test, indicators)",
+                "scipy (statistics, ADF test, indicators)",
                 "Plotly (interactive theme-aware charts)",
                 "uv + uv.lock (Python 3.13)",
-                "pytest + Streamlit AppTest, GitHub Actions",
             ],
         },
         hide_index=True,

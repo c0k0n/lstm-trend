@@ -2,6 +2,7 @@
 
 from typing import cast
 
+import numpy as np
 import pandas as pd
 
 from .metrics import regression_metrics
@@ -44,13 +45,10 @@ def baseline_forecasts(
 
 
 def evaluate_baselines(
-    close: pd.Series, test_start_index: int, window: int
+    actual: np.ndarray, frame: pd.DataFrame
 ) -> dict[str, dict[str, float]]:
-    """Evaluate naive and moving-average forecasts on the test window."""
-    actual = close.iloc[test_start_index:].to_numpy()
-    frame = baseline_forecasts(close, test_start_index, window)
-
+    """Evaluate every forecast column of a baseline frame against the test window."""
     return {
-        NAIVE: regression_metrics(actual, frame[NAIVE].to_numpy()),
-        MOVING_AVERAGE: regression_metrics(actual, frame[MOVING_AVERAGE].to_numpy()),
+        name: regression_metrics(actual, frame[name].to_numpy())
+        for name in frame.columns
     }

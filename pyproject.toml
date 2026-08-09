@@ -1,9 +1,15 @@
+[build-system]
+requires = ["uv_build >= 0.12.3, <0.13.0"]
+build-backend = "uv_build"
+
 [project]
 name = "lstm-trend"
 version = "0.3.0"
-description = "LSTM stock price forecasting with Keras 3 on PyTorch: Streamlit app with deep EDA, baseline comparisons, and honest limitations."
+description = "LSTM stock price forecasting with Keras 3 on PyTorch: Streamlit app with deep EDA, baseline comparisons, and limitations."
 readme = "README.md"
 requires-python = ">=3.13"
+license = "MIT"
+keywords = ["lstm", "forecasting", "stocks", "streamlit", "keras", "pytorch", "time-series"]
 dependencies = [
     "keras>=3.15.1",
     "numpy>=2.5.1",
@@ -11,27 +17,14 @@ dependencies = [
     "plotly>=6.9.0",
     "scikit-learn>=1.9.0",
     "scipy>=1.18.0",
-    "statsmodels>=0.14.6",
     "streamlit>=1.61.1",
     "torch>=2.13.0",
     "yfinance>=1.5.2",
 ]
 
-[dependency-groups]
-dev = [
-    "pytest>=9.1.1",
-]
+[project.urls]
+Homepage = "https://lstm-trend.streamlit.app"
+Repository = "https://github.com/c0k0n/lstm-trend"
 
 [tool.uv]
 package = false
-
-[tool.pytest.ini_options]
-pythonpath = ["."]
-markers = [
-    "e2e: end-to-end AppTest tests that exercise the live Streamlit app",
-]
-filterwarnings = [
-    "ignore:__array__ implementation doesn't accept a copy keyword:DeprecationWarning",
-    "ignore:RNN module weights are not part of single contiguous chunk of memory:UserWarning",
-    "ignore:`torch.jit.script_method` is deprecated:DeprecationWarning",
-]

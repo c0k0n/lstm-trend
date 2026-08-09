@@ -1,6 +1,7 @@
 """Analytics page: deep exploratory analysis of a single ticker."""
 
 import datetime
+from typing import cast
 
 import pandas as pd
 import streamlit as st
@@ -13,7 +14,7 @@ from ...constants import (
     SUGGESTED_SYMBOLS,
 )
 from .. import charts
-from ..components import load_data_cached
+from ..components import format_percent, load_data_cached
 
 TABS = ["📈 Overview", "📊 Returns", "📅 Seasonality", "🧭 Technicals", "🕳️ Risk"]
 
@@ -49,7 +50,7 @@ def _controls() -> tuple[str, datetime.date, datetime.date]:
 def _overview(data: pd.DataFrame) -> None:
     from ...core import analytics
 
-    close = data["Close"]
+    close = cast(pd.Series, data["Close"])
     stats = analytics.comparison_frame(close)
 
     pr = analytics.period_returns(close)
@@ -58,10 +59,10 @@ def _overview(data: pd.DataFrame) -> None:
 
     m1, m2, m3, m4, m5 = st.columns(5)
     m1.metric("Last close", f"${last:,.2f}")
-    m2.metric("YTD", f"{pr.get('YTD', float('nan')):.2f}%")
-    m3.metric("1M", f"{pr.get('1M', float('nan')):.2f}%")
-    m4.metric("6M", f"{pr.get('6M', float('nan')):.2f}%")
-    m5.metric("1Y", f"{pr.get('1Y', float('nan')):.2f}%")
+    m2.metric("YTD", format_percent(pr.get("YTD")))
+    m3.metric("1M", format_percent(pr.get("1M")))
+    m4.metric("6M", format_percent(pr.get("6M")))
+    m5.metric("1Y", format_percent(pr.get("1Y")))
     m1.metric("52w range position", f"{pos:.0%}", delta=None)
     m2.metric("Max drawdown", f"{stats['Max drawdown']:.1%}")
 
@@ -110,7 +111,7 @@ def _overview(data: pd.DataFrame) -> None:
 def _returns(data: pd.DataFrame) -> None:
     from ...core import analytics
 
-    close = data["Close"]
+    close = cast(pd.Series, data["Close"])
     returns = analytics.daily_returns(close)
     moments = analytics.return_moments(returns)
     adf = analytics.adf_summary(close)
@@ -150,7 +151,7 @@ def _returns(data: pd.DataFrame) -> None:
 def _seasonality(data: pd.DataFrame) -> None:
     from ...core import analytics
 
-    close = data["Close"]
+    close = cast(pd.Series, data["Close"])
 
     st.plotly_chart(
         charts.plot_monthly_heatmap(analytics.monthly_returns_matrix(close)),
@@ -160,11 +161,14 @@ def _seasonality(data: pd.DataFrame) -> None:
     col1, col2 = st.columns(2)
     with col1:
         months = analytics.month_effects(close)
-        months["mean"] = months["mean"].map(lambda v: f"{v:.2%}")
-        months["hit_rate"] = months["hit_rate"].map(lambda v: f"{v:.0%}")
+        months["mean"] = months["mean"].map(lambda v: "—" if pd.isna(v) else f"{v:.2%}")
+        months["hit_rate"] = months["hit_rate"].map(
+            lambda v: "—" if pd.isna(v) else f"{v:.0%}"
+        )
         st.dataframe(
             months.rename(
                 columns={
+                    "month": "Month",
                     "mean": "Avg monthly return",
                     "hit_rate": "Up months",
                     "count": "Count",
@@ -193,7 +197,7 @@ def _seasonality(data: pd.DataFrame) -> None:
 def _technicals(data: pd.DataFrame) -> None:
     from ...core import analytics
 
-    close = data["Close"]
+    close = cast(pd.Series, data["Close"])
     signals = analytics.latest_signals(close)
 
     st.plotly_chart(
@@ -221,7 +225,7 @@ def _technicals(data: pd.DataFrame) -> None:
 def _risk(data: pd.DataFrame) -> None:
     from ...core import analytics
 
-    close = data["Close"]
+    close = cast(pd.Series, data["Close"])
     returns = analytics.daily_returns(close)
 
     col1, col2, col3, col4 = st.columns(4)
@@ -270,8 +274,9 @@ def _load_data(
     symbol: str, start: datetime.date, end: datetime.date
 ) -> pd.DataFrame | None:
     """Fetch OHLCV data, showing skeleton placeholders during a first download."""
-    loaded_key = f"analytics_loaded_{symbol}_{start}_{end}"
-    if st.session_state.get(loaded_key):
+    loaded = st.session_state.setdefault("analytics_loaded", {})
+    loaded_key = f"{symbol}_{start}_{end}"
+    if loaded.get(loaded_key):
         return load_data_cached(symbol, start, end)
 
     placeholder = st.empty()
@@ -280,7 +285,7 @@ def _load_data(
         st.skeleton(height=360, width="stretch")
     data = load_data_cached(symbol, start, end)
     placeholder.empty()
-    st.session_state[loaded_key] = True
+    loaded[loaded_key] = True
     return data
 
 
@@ -303,17 +308,25 @@ def render() -> None:
         return
 
     data = _load_data(symbol, start, end)
-    if data is None or len(data) < 60:
+    if data is None:
         st.error(
-            f"Could not download enough data for **{symbol}** in this date range. "
+            f"Could not download data for **{symbol}** in this date range. "
             "Check the ticker and the range, then try again."
         )
         return
+    if len(data) < 60:
+        st.error(
+            f"Only {len(data)} trading days found for **{symbol}** — the "
+            "analytics need at least 60. Extend the date range and try again."
+        )
+        return
 
-    close = data["Close"]
+    close = cast(pd.Series, data["Close"])
+    first_day = cast(pd.Timestamp, close.index[0]).date()
+    last_day = cast(pd.Timestamp, close.index[-1]).date()
     st.caption(
         f"**{symbol}** · {len(data)} trading days · "
-        f"{close.index[0].date()} → {close.index[-1].date()} · "
+        f"{first_day} → {last_day} · "
         f"range ${close.min():,.2f} – ${close.max():,.2f}"
     )
     st.space("small")

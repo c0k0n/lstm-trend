@@ -14,7 +14,6 @@ env/
 # Linting / tooling caches
 .ruff_cache/
 .mypy_cache/
-.pytest_cache/
 
 # Environment and secrets
 .env
@@ -30,4 +29,5 @@ note.txt
 .idea/
 .vscode/
 
+# AI
 AGENTS.md

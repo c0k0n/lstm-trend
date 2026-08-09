@@ -24,6 +24,13 @@ from . import charts
 SESSION_KEY = "analysis"
 
 
+def format_percent(value: float | None) -> str:
+    """Signed percent string, or an em dash when the value is missing."""
+    if value is None or pd.isna(value):
+        return "—"
+    return f"{value:+.2f}%"
+
+
 @st.cache_data(ttl=3600, show_spinner="Downloading market data…")
 def load_data_cached(
     symbol: str, start: datetime.date, end: datetime.date
@@ -74,6 +81,8 @@ def render_sidebar_config() -> dict[str, Any]:
                 help="How many business days ahead to forecast. Pick a preset or "
                 "choose Custom… for any value between 5 and 90.",
             )
+            if future_steps is None:
+                future_steps = DEFAULT_FUTURE_STEPS
             if future_steps == "Custom…":
                 future_steps = st.slider(
                     "Prediction horizon (days)",
@@ -250,7 +259,6 @@ def render_forecast_table(result: AnalysisResult) -> None:
             "change_pct": "Day-over-day",
         }
     )
-    table["Day-over-day"] = table["Day-over-day"].fillna("—")
     with st.container(height=480):
         st.dataframe(
             table,
@@ -288,10 +296,10 @@ def render_quick_stats(result: AnalysisResult) -> None:
 
     cols = st.columns(6)
     cols[0].metric("Last close", f"${close.iloc[-1]:,.2f}")
-    cols[1].metric("YTD", f"{pr.get('YTD', float('nan')):+.2f}%")
-    cols[2].metric("1M", f"{pr.get('1M', float('nan')):+.2f}%")
-    cols[3].metric("6M", f"{pr.get('6M', float('nan')):+.2f}%")
-    cols[4].metric("1Y", f"{pr.get('1Y', float('nan')):+.2f}%")
+    cols[1].metric("YTD", format_percent(pr.get("YTD")))
+    cols[2].metric("1M", format_percent(pr.get("1M")))
+    cols[3].metric("6M", format_percent(pr.get("6M")))
+    cols[4].metric("1Y", format_percent(pr.get("1Y")))
     cols[5].metric("52w range position", f"{pos:.0%}")
 
 

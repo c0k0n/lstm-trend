@@ -1,28 +1,20 @@
-"""End-to-end analysis pipeline: data -> preprocess -> train -> predict.
+"""End-to-end analysis pipeline: download, train, evaluate, forecast."""
 
-Everything in this module is pure Python (no Streamlit), so the exact same
-code runs in the app, in tests, and on the CI runner.
-"""
+from __future__ import annotations
 
-from dataclasses import dataclass
+import datetime
+import logging
+from dataclasses import dataclass, field
 from typing import Any, cast
 
-import numpy as np
+import keras
 import pandas as pd
-from keras.utils import set_random_seed
-from sklearn.preprocessing import MinMaxScaler
 
-from ..constants import (
-    DENSE_UNITS,
-    EARLY_STOPPING_PATIENCE,
-    LSTM_DROPOUT,
-    LSTM_UNITS,
-    MOVING_AVERAGE_WINDOW,
-    RANDOM_SEED,
-    TRAIN_TEST_SPLIT_RATIO,
-    VALIDATION_SPLIT,
+from .baselines import (
+    MOVING_AVERAGE,
+    baseline_forecasts,
+    evaluate_baselines,
 )
-from . import baselines
 from .callbacks import ProgressReporterCallback
 from .data_loader import download_stock_data
 from .lstm_model import (
@@ -33,84 +25,96 @@ from .lstm_model import (
 )
 from .metrics import regression_metrics
 from .preprocessing import create_sequences, scale_data
+from ..constants import (
+    DENSE_UNITS,
+    EARLY_STOPPING_PATIENCE,
+    LSTM_DROPOUT,
+    LSTM_UNITS,
+    MOVING_AVERAGE_WINDOW,
+    RANDOM_SEED,
+    TRAIN_TEST_SPLIT_RATIO,
+    VALIDATION_SPLIT,
+)
+
+logger = logging.getLogger(__name__)
+
+
+class PipelineError(Exception):
+    """Raised when the analysis pipeline cannot complete."""
 
 
 @dataclass
 class AnalysisResult:
-    """Everything produced by one run of the analysis pipeline."""
+    """All artefacts produced by a single analysis run."""
 
     symbol: str
-    params: dict[str, Any]
     data: pd.DataFrame
     close: pd.Series
-    scaler: MinMaxScaler
-    model: Any
-    history: Any
+    test_start_index: int
     test_predictions: pd.DataFrame
-    future: pd.DataFrame
     lstm_metrics: dict[str, float]
     baselines: dict[str, dict[str, float]]
     baselines_frame: pd.DataFrame
-    test_start_index: int
-
-    @property
-    def forecast_with_change(self) -> pd.DataFrame:
-        """Forecast table with day-over-day percentage change, for display."""
-        change = self.future["predicted_close"].pct_change() * 100
-        return self.future.assign(change_pct=change)
-
-
-class PipelineError(RuntimeError):
-    """Raised when a step of the pipeline fails (message is user-facing)."""
+    history: Any
+    future: pd.DataFrame
+    forecast_with_change: pd.DataFrame
+    params: dict[str, Any] = field(default_factory=dict)
 
 
 def run_analysis(
+    *,
     symbol: str,
-    start_date: Any,
-    end_date: Any,
+    start_date: datetime.date,
+    end_date: datetime.date,
     sequence_length: int,
     future_steps: int,
     epochs: int,
     batch_size: int,
     progress_callback: ProgressReporterCallback | None = None,
 ) -> AnalysisResult:
-    """Run the full pipeline for the given parameters and return the result."""
-    set_random_seed(RANDOM_SEED)
+    """Execute the full analysis pipeline and return all results.
+
+    Raises PipelineError on data or model failures.
+    """
+    keras.utils.set_random_seed(RANDOM_SEED)
+
+    # --- Data ---
     data = download_stock_data(symbol, start_date, end_date)
-    if data is None or data.empty:
+    if data is None or len(data) < sequence_length + 10:
         raise PipelineError(
-            f"No data found for {symbol} between {start_date} and {end_date}. "
-            "Check the ticker and date range."
+            f"Not enough data for **{symbol}** in this date range "
+            f"({0 if data is None else len(data)} rows). "
+            "Try a longer date range or a different ticker."
         )
 
     close = cast(pd.Series, data["Close"])
-    scaled, scaler = scale_data(close.to_numpy().reshape(-1, 1))
-    sequences = create_sequences(scaled, sequence_length)
-    if sequences is None:
-        raise PipelineError(
-            f"Not enough data ({len(scaled)} points) for a lookback of "
-            f"{sequence_length} days. Use an earlier start date or shorter lookback."
-        )
-    x, y = sequences
+    close_np = close.to_numpy().reshape(-1, 1)
 
-    split = int(len(x) * TRAIN_TEST_SPLIT_RATIO)
-    if split == 0 or split == len(x):
-        raise PipelineError("Train/test split produced an empty set. Adjust the range.")
-    if split < 20:
+    # --- Scale & sequence ---
+    scaled, scaler = scale_data(close_np)
+    seq_result = create_sequences(scaled, sequence_length)
+    if seq_result is None:
         raise PipelineError(
-            f"Only {len(x)} training windows available — too few to train and "
-            "validate reliably. Use an earlier start date or shorter lookback."
+            f"Not enough data to create sequences for **{symbol}** "
+            f"(need more than {sequence_length} rows)."
         )
-    x_train, x_test = x[:split], x[split:]
-    y_train, y_test = y[:split], y[split:]
-    test_start_index = split + sequence_length
+    x, y = seq_result
 
+    # --- Train / test split ---
+    split_idx = int(len(x) * TRAIN_TEST_SPLIT_RATIO)
+    x_train, x_test = x[:split_idx], x[split_idx:]
+    y_train, y_test = y[:split_idx], y[split_idx:]
+    test_start_index = split_idx + sequence_length
+
+    # --- Model ---
     model = create_lstm_model(
         input_shape=(sequence_length, 1),
         units=LSTM_UNITS,
         dropout_rate=LSTM_DROPOUT,
         dense_units=DENSE_UNITS,
     )
+
+    # --- Train ---
     history = train_model(
         model,
         x_train,
@@ -122,45 +126,50 @@ def run_analysis(
         progress_callback=progress_callback,
     )
 
+    # --- Evaluate on test ---
     test_predictions = predict_on_test(model, x_test, y_test, scaler)
     lstm_metrics = regression_metrics(
         test_predictions["actual"].to_numpy(),
         test_predictions["predicted"].to_numpy(),
     )
 
+    # --- Baselines ---
+    baselines_frame = baseline_forecasts(close, test_start_index, MOVING_AVERAGE_WINDOW)
+    baselines = evaluate_baselines(
+        test_predictions["actual"].to_numpy(), baselines_frame
+    )
+
+    # --- Future forecast ---
     future = make_future_predictions(
         model,
         scaled,
         scaler,
         sequence_length,
         future_steps,
-        last_date=cast(pd.Timestamp, close.index[-1]),
+        cast(pd.Timestamp, close.index[-1]),
     )
 
-    baseline_frame = baselines.baseline_forecasts(
-        close, test_start_index, MOVING_AVERAGE_WINDOW
-    )
-    baseline_metrics = baselines.evaluate_baselines(
-        close, test_start_index, MOVING_AVERAGE_WINDOW
-    )
+    # --- Forecast with day-over-day change ---
+    forecast_with_change = future.copy()
+    forecast_with_change["change_pct"] = forecast_with_change[
+        "predicted_close"
+    ].pct_change()
 
     return AnalysisResult(
         symbol=symbol,
+        data=data,
+        close=close,
+        test_start_index=test_start_index,
+        test_predictions=test_predictions,
+        lstm_metrics=lstm_metrics,
+        baselines=baselines,
+        baselines_frame=baselines_frame,
+        history=history,
+        future=future,
+        forecast_with_change=forecast_with_change,
         params={
             "sequence_length": sequence_length,
-            "future_steps": future_steps,
             "epochs": epochs,
             "batch_size": batch_size,
         },
-        data=data,
-        close=close,
-        scaler=scaler,
-        model=model,
-        history=history,
-        test_predictions=test_predictions,
-        future=future,
-        lstm_metrics=lstm_metrics,
-        baselines=baseline_metrics,
-        baselines_frame=baseline_frame,
-        test_start_index=test_start_index,
     )
