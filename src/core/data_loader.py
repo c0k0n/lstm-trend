@@ -2,7 +2,6 @@
 
 import datetime
 import logging
-from typing import cast
 
 import pandas as pd
 import yfinance as yf
@@ -29,7 +28,7 @@ def download_stock_data(
         if isinstance(data.columns, pd.MultiIndex):
             data.columns = data.columns.get_level_values(0)
 
-        data = cast(pd.DataFrame, data[["Open", "High", "Low", "Close", "Volume"]])
+        data = data[["Open", "High", "Low", "Close", "Volume"]]
         if not isinstance(data.index, pd.DatetimeIndex):
             data.index = pd.to_datetime(data.index)
         data = data.dropna()

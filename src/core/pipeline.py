@@ -5,7 +5,7 @@ from __future__ import annotations
 import datetime
 import logging
 from dataclasses import dataclass, field
-from typing import Any, cast
+from typing import Any
 
 import keras
 import pandas as pd
@@ -83,7 +83,7 @@ def run_analysis(
             "Try a longer date range or a different ticker."
         )
 
-    close = cast(pd.Series, data["Close"])
+    close = data["Close"]
     close_np = close.to_numpy().reshape(-1, 1)
 
     # --- Scale & sequence ---
@@ -142,7 +142,7 @@ def run_analysis(
         scaler,
         sequence_length,
         future_steps,
-        cast(pd.Timestamp, close.index[-1]),
+        close.index[-1],
     )
 
     # --- Forecast with day-over-day change ---

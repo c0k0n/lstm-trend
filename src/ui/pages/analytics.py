@@ -1,7 +1,6 @@
 """Analytics page: deep exploratory analysis of a single ticker."""
 
 import datetime
-from typing import cast
 
 import pandas as pd
 import streamlit as st
@@ -50,7 +49,7 @@ def _controls() -> tuple[str, datetime.date, datetime.date]:
 def _overview(data: pd.DataFrame) -> None:
     from ...core import analytics
 
-    close = cast(pd.Series, data["Close"])
+    close = data["Close"]
     stats = analytics.comparison_frame(close)
 
     pr = analytics.period_returns(close)
@@ -111,7 +110,7 @@ def _overview(data: pd.DataFrame) -> None:
 def _returns(data: pd.DataFrame) -> None:
     from ...core import analytics
 
-    close = cast(pd.Series, data["Close"])
+    close = data["Close"]
     returns = analytics.daily_returns(close)
     moments = analytics.return_moments(returns)
     adf = analytics.adf_summary(close)
@@ -151,7 +150,7 @@ def _returns(data: pd.DataFrame) -> None:
 def _seasonality(data: pd.DataFrame) -> None:
     from ...core import analytics
 
-    close = cast(pd.Series, data["Close"])
+    close = data["Close"]
 
     st.plotly_chart(
         charts.plot_monthly_heatmap(analytics.monthly_returns_matrix(close)),
@@ -197,7 +196,7 @@ def _seasonality(data: pd.DataFrame) -> None:
 def _technicals(data: pd.DataFrame) -> None:
     from ...core import analytics
 
-    close = cast(pd.Series, data["Close"])
+    close = data["Close"]
     signals = analytics.latest_signals(close)
 
     st.plotly_chart(
@@ -225,7 +224,7 @@ def _technicals(data: pd.DataFrame) -> None:
 def _risk(data: pd.DataFrame) -> None:
     from ...core import analytics
 
-    close = cast(pd.Series, data["Close"])
+    close = data["Close"]
     returns = analytics.daily_returns(close)
 
     col1, col2, col3, col4 = st.columns(4)
@@ -321,9 +320,9 @@ def render() -> None:
         )
         return
 
-    close = cast(pd.Series, data["Close"])
-    first_day = cast(pd.Timestamp, close.index[0]).date()
-    last_day = cast(pd.Timestamp, close.index[-1]).date()
+    close = data["Close"]
+    first_day = close.index[0].date()
+    last_day = close.index[-1].date()
     st.caption(
         f"**{symbol}** · {len(data)} trading days · "
         f"{first_day} → {last_day} · "

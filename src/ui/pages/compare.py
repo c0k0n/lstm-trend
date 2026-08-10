@@ -1,7 +1,6 @@
 """Compare page: multi-ticker side-by-side analysis."""
 
 import datetime
-from typing import cast
 
 import pandas as pd
 import streamlit as st
@@ -135,7 +134,7 @@ def render() -> None:
             if data is None or len(data) < 60:
                 st.warning(f"Not enough data for **{symbol}** in this range — skipped.")
                 continue
-            series[symbol] = cast(pd.Series, data["Close"])
+            series[symbol] = data["Close"]
         status.update(
             label=f"Downloaded {len(series)}/{len(symbols)} tickers", state="complete"
         )

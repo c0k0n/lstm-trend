@@ -352,36 +352,40 @@ the moving-average window, and the plot colours.
 - **2023 — FYP start.** First version of the app: Streamlit, Keras LSTM, a few
   notebooks worth of trial and error, and a README that was mostly notes to
   myself.
-- **2026 — continued development.** Moved to uv with a proper `pyproject.toml`
+- **Continued development.** Moved to uv with a proper `pyproject.toml`
   and lock file, updated every dependency to a current version, replaced
   deprecated Streamlit API calls, and deployed the app publicly on Community
   Cloud.
-- **2026 — latest chapters.** Migrated to Keras 3 + PyTorch (GPU support
-  without the `LD_LIBRARY_PATH` hacks), grew into a multipage app with deep
-  analytics and comparison pages, and added baseline comparisons and an empirical
-  Findings page.
-- **2026 — modern UI pass.** Lazy tab loading, dialogs, model-settings forms,
+- **Keras 3 + PyTorch.** Migrated to Keras 3 with a PyTorch backend (GPU
+  support without the `LD_LIBRARY_PATH` hacks), grew into a multipage app with
+  deep analytics and comparison pages, and added baseline comparisons and an
+  empirical Findings page.
+- **Modern UI pass.** Lazy tab loading, dialogs, model-settings forms,
   deep-linkable URLs, skeletons and streaming status, and a theme-aware footer.
-- **2026 — quality pass.** A full audit of the codebase: fixed the moving
-  average baseline (it was scored against the wrong window), a crash on
-  weekday tables when a weekday is missing, a broken deep-link path for
-  custom horizons, and a hard-coded footer link; removed dead code and
-  leftover dependencies, deduplicated chart colours and page configuration,
-  and modernized the typing.
-- **2026 — second quality pass.** Found and fixed the worst bug in the app: the
+- **Quality pass.** A full audit of the codebase: fixed the moving average
+  baseline (it was scored against the wrong window), a crash on weekday tables
+  when a weekday is missing, a broken deep-link path for custom horizons, and a
+  hard-coded footer link; removed dead code and leftover dependencies,
+  deduplicated chart colours and page configuration, and modernized the typing.
+- **Second quality pass.** Found and fixed the worst bug in the app: the
   drawdown detector silently dropped every drawdown event (a 10-day −50% crash
   reported "no drawdowns"). Also replaced magic calendar lookbacks with exact
   business-day offsets, fixed mislabelled monthly-returns heatmap columns and
   mismatched bar colours in the RMSE chart, made sequence creation zero-copy
   and baselines vectorized, seeded every training run (the docs always claimed
   it), added a minimum-data guard so tiny datasets fail with a friendly error
-   instead of a Keras crash, adapted to Keras 3.15's string `verbose` API and
-   pandas 3.0, and deleted the now-redundant `run.sh`.
-- **2026 — third quality pass.** Removed unused imports and dead parameters,
-  replaced a fragile `id()`-based session key with a stable symbol-based key,
-  added type annotations to chart and findings functions, fixed the lazy tab
-  loading pattern, corrected the project structure in the README, and removed
-  stale references to files that no longer exist.
+  instead of a Keras crash, adapted to Keras 3.15's string `verbose` API and
+  pandas 3.0, and deleted the now-redundant `run.sh`.
+- **Third quality pass.** Removed unused imports and dead parameters, replaced
+  a fragile `id()`-based session key with a stable symbol-based key, added type
+  annotations to chart and findings functions, fixed the lazy tab loading
+  pattern, corrected the project structure in the README, and removed stale
+  references to files that no longer exist.
+- **Fourth quality pass.** Removed unnecessary `cast()` calls across the
+  codebase (analytics, baselines, charts, compare, data loader, pipeline),
+  extracted the magic millisecond-per-day constant in the volume chart, and
+  simplified the drawdown event detector by dropping a redundant `pd.Timestamp()`
+  wrapper that was masking a type-checker issue.
 
 The git history still contains all the earlier commits, if you ever want to see
 how it evolved.

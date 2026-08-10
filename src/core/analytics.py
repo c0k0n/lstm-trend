@@ -5,8 +5,6 @@ numpy / scipy — no Streamlit imports.
 
 from __future__ import annotations
 
-from typing import cast
-
 import numpy as np
 import pandas as pd
 from scipy import stats
@@ -29,8 +27,8 @@ def annualized_return(close: pd.Series) -> float:
     """Compound annual growth rate from first to last close."""
     if len(close) < 2:
         return 0.0
-    first = cast(pd.Timestamp, close.index[0])
-    last = cast(pd.Timestamp, close.index[-1])
+    first = close.index[0]
+    last = close.index[-1]
     years = (last - first).days / 365.25
     if years <= 0:
         return 0.0
@@ -95,16 +93,14 @@ def rolling_volatility(
 
 def period_returns(close: pd.Series) -> dict[str, float]:
     """Trailing returns over common horizons, in percent."""
-    last_date = cast(pd.Timestamp, close.index[-1])
+    last_date = close.index[-1]
     today = close.iloc[-1]
     out: dict[str, float] = {}
     for label, bdays in (("1M", 21), ("3M", 63), ("6M", 126), ("1Y", 252)):
-        past = cast(float, close.asof(last_date - pd.offsets.BDay(bdays)))
+        past = close.asof(last_date - pd.offsets.BDay(bdays))
         out[label] = float((today / past - 1) * 100) if not np.isnan(past) else np.nan
 
-    year_start = cast(
-        float, close.asof(pd.Timestamp(year=last_date.year, month=1, day=1))
-    )
+    year_start = close.asof(pd.Timestamp(year=last_date.year, month=1, day=1))
     out["YTD"] = (
         float((today / year_start - 1) * 100) if not np.isnan(year_start) else np.nan
     )
@@ -128,8 +124,7 @@ def drawdown_events(close: pd.Series, min_depth: float = 0.05) -> pd.DataFrame:
     trough: pd.Timestamp | None = None
     trough_val = 0.0
     in_dd = False
-    for raw_idx, val in zip(dd.index, dd.values):
-        idx = cast(pd.Timestamp, pd.Timestamp(raw_idx))
+    for idx, val in zip(dd.index, dd.values):
         if not in_dd and val < 0:
             in_dd, start, trough, trough_val = True, idx, idx, val
         elif in_dd:
@@ -148,7 +143,7 @@ def drawdown_events(close: pd.Series, min_depth: float = 0.05) -> pd.DataFrame:
                 in_dd = False
                 start, trough, trough_val = None, None, 0.0
     if in_dd and start is not None and trough is not None:
-        last_index = cast(pd.Timestamp, close.index[-1])
+        last_index = close.index[-1]
         events.append(
             {
                 "Start": start,
@@ -171,7 +166,7 @@ def return_moments(returns: pd.Series) -> dict[str, float]:
     return {
         "skewness": float(stats.skew(returns)) if len(returns) > 2 else 0.0,
         "kurtosis": float(stats.kurtosis(returns)) if len(returns) > 2 else 0.0,
-        "std": float(cast(float, returns.std(ddof=1))) if len(returns) > 1 else 0.0,
+        "std": float(returns.std(ddof=1)) if len(returns) > 1 else 0.0,
     }
 
 
@@ -324,11 +319,11 @@ def month_effects(close: pd.Series) -> pd.DataFrame:
 # Technical indicators
 # --------------------------------------------------------------------------- #
 def sma(close: pd.Series, window: int) -> pd.Series:
-    return cast(pd.Series, close.rolling(window).mean())
+    return close.rolling(window).mean()
 
 
 def ema(close: pd.Series, span: int) -> pd.Series:
-    return cast(pd.Series, close.ewm(span=span, adjust=False).mean())
+    return close.ewm(span=span, adjust=False).mean()
 
 
 def rsi(close: pd.Series, period: int = 14) -> pd.Series:
@@ -339,7 +334,7 @@ def rsi(close: pd.Series, period: int = 14) -> pd.Series:
     avg_loss = loss.ewm(alpha=1 / period, adjust=False).mean()
     # avg_loss == 0 -> rs = inf -> RSI 100; 0/0 on the first row -> NaN -> 50
     rs = avg_gain / avg_loss
-    out = cast(pd.Series, 100 - 100 / (1 + rs))
+    out = 100 - 100 / (1 + rs)
     return out.fillna(50)
 
 
@@ -407,7 +402,7 @@ def latest_signals(close: pd.Series) -> dict[str, str]:
             f"price {trend} the 200-day average (long-term {'uptrend' if trend == 'above' else 'downtrend'})"
         )
     crosses = crossover_dates(s20, s200)
-    cutoff = cast(pd.Timestamp, close.index[-1]) - pd.Timedelta(days=365)
+    cutoff = close.index[-1] - pd.Timedelta(days=365)
     recent = crosses[crosses["Date"] > cutoff]
     if len(recent):
         last = recent.iloc[-1]

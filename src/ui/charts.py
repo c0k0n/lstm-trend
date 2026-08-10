@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
@@ -322,7 +322,7 @@ def plot_qq(returns: pd.Series) -> go.Figure:
     )
     osm_arr = np.asarray(osm, dtype=float)
     osr_arr = np.asarray(osr, dtype=float)
-    line_y = cast(float, slope) * osm_arr + cast(float, intercept)
+    line_y = slope * osm_arr + intercept
     fig = go.Figure()
     fig.add_trace(
         go.Scatter(
@@ -617,6 +617,9 @@ def plot_bollinger(close: pd.Series) -> go.Figure:
     return fig
 
 
+_MILLIS_PER_DAY: int = 86_400_000
+
+
 def plot_volume_analysis(data: pd.DataFrame) -> go.Figure:
     aggregated = len(data) > 260
     if aggregated:
@@ -626,14 +629,14 @@ def plot_volume_analysis(data: pd.DataFrame) -> go.Figure:
             .agg({"Close": "last", "Volume": "sum"})
             .dropna()
         )
-        close = cast(pd.Series, agg["Close"])
-        volume = cast(pd.Series, agg["Volume"])
+        close = agg["Close"]
+        volume = agg["Volume"]
     else:
-        close = cast(pd.Series, data["Close"])
-        volume = cast(pd.Series, data["Volume"])
+        close = data["Close"]
+        volume = data["Volume"]
     ret = close.pct_change().fillna(0)
     colors = [COLOR_PREDICTED if v >= 0 else _PALETTE[4] for v in ret]
-    bar_width = 5 * 86_400_000 if aggregated else 86_400_000
+    bar_width = 5 * _MILLIS_PER_DAY if aggregated else _MILLIS_PER_DAY
     fig = go.Figure()
     fig.add_trace(
         go.Bar(
@@ -651,8 +654,8 @@ def plot_volume_analysis(data: pd.DataFrame) -> go.Figure:
 
 
 def plot_volume_return_scatter(data: pd.DataFrame) -> go.Figure:
-    close = cast(pd.Series, data["Close"])
-    volume = cast(pd.Series, data["Volume"])
+    close = data["Close"]
+    volume = data["Volume"]
     ret = close.pct_change().fillna(0)
     fig = go.Figure(
         go.Scatter(
