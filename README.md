@@ -18,7 +18,6 @@ tries to forecast what the price might do over the next few business days.
 - [Project structure](#project-structure)
 - [Running it locally](#running-it-locally)
 - [GPU acceleration](#gpu-acceleration)
-- [Tests](#tests)
 - [Deploying to Streamlit Community Cloud](#deploying-to-streamlit-community-cloud)
 - [Configuration](#configuration)
 - [Project history](#project-history)
@@ -42,7 +41,7 @@ The project has kept growing since then:
   `LD_LIBRARY_PATH` dance,
 - the app grew into a **multipage tool**: a Dashboard for forecasting, an
   Analytics page for deep exploratory analysis, a Compare page for multi-ticker
-  work, an empirical Findings page, and an About page,
+  work, an empirical Findings page, a Methodology page, and an About page,
 - the analysis is grounded in **baselines**, so the LSTM's numbers are always
   shown next to 'repeat yesterday' and a moving average,
 - everything runs on **uv** for a clean, reproducible environment.
@@ -118,7 +117,7 @@ In plain words:
 - Forecast horizon picks come as presets (5 / 15 / 30 days or Custom…)
   via a segmented control instead of a plain slider.
 - Forecast table with formatted columns and a CSV download button.
-- Dark theme configured in `.streamlit/config.toml`, custom logo in the sidebar.
+- Dark theme configured in `.streamlit/config.toml`.
 - Shareable deep links: after a run the ticker, dates and horizon are written
   back to the URL, so you can bookmark or share an exact analysis. Preset
   horizons (5/15/30) land on the matching preset; any other value (5–90)
@@ -221,10 +220,16 @@ A few details worth knowing:
 
 ```
 lstm-trend/
-├── streamlit_app.py          # Entry point: st.navigation + st.logo
+├── streamlit_app.py          # Entry point: st.navigation + HTML footer
+├── .gitignore                # Git ignore rules
+├── .python-version           # Pins Python 3.13 for uv
+├── .streamlit/
+│   └── config.toml           # Dark theme, widget borders, usage stats off
 ├── src/
+│   ├── __init__.py
 │   ├── constants.py          # Defaults and shared settings
 │   ├── core/                 # Pure logic, no Streamlit imports
+│   │   ├── __init__.py
 │   │   ├── data_loader.py    # yfinance download + column flattening
 │   │   ├── preprocessing.py  # Scaling and sequence creation
 │   │   ├── metrics.py        # MSE / RMSE / MAE / MAPE / R²
@@ -234,16 +239,22 @@ lstm-trend/
 │   │   ├── lstm_model.py     # Model creation, training, forecasting
 │   │   └── pipeline.py       # run_analysis(): the whole pipeline, typed
 │   └── ui/                   # Streamlit-specific rendering
+│       ├── __init__.py
 │       ├── charts.py         # All Plotly chart builders
 │       ├── components.py     # Sidebar config, progress UI, result rendering
-│       └── pages/            # dashboard, analytics, compare, findings, methodology, about
-│           └── nav.py        # Page registry (st.Page objects) for navigation
-├── .python-version           # Pins Python 3.13 for uv
-├── .streamlit/config.toml    # Dark theme, widget borders, usage stats off
-├── AGENTS.md                 # Instructions for AI coding tools
+│       └── pages/            # One module per app page
+│           ├── __init__.py
+│           ├── nav.py        # Page registry (st.Page objects) for navigation
+│           ├── dashboard.py  # Run analyses, see charts and forecast
+│           ├── analytics.py  # Deep EDA of any ticker
+│           ├── compare.py    # Multi-ticker analysis
+│           ├── findings.py   # Metrics, baseline comparison, caveats
+│           ├── methodology.py# Pipeline diagram, architecture, hyperparameters
+│           └── about.py      # Project story
 ├── streamlitinfolinks.txt    # Index of official Streamlit docs links (dev reference)
 ├── pyproject.toml            # Project metadata + dependencies (uv)
 ├── uv.lock                   # Locked dependency versions
+├── AGENTS.md                 # Instructions for AI coding tools
 └── README.md                 # This file
 ```
 
