@@ -9,6 +9,7 @@ from sklearn.metrics import (
 )
 
 METRIC_NAMES: tuple[str, ...] = ("mse", "rmse", "mae", "mape", "r2")
+"""Ordered names of the regression metrics returned by :func:`regression_metrics`."""
 
 
 def regression_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:

@@ -7,14 +7,17 @@ import pandas as pd
 
 
 def sma(close: pd.Series, window: int) -> pd.Series:
+    """Simple moving average over ``window`` periods."""
     return close.rolling(window).mean()
 
 
 def ema(close: pd.Series, span: int) -> pd.Series:
+    """Exponential moving average with a given ``span``."""
     return close.ewm(span=span, adjust=False).mean()
 
 
 def rsi(close: pd.Series, period: int = 14) -> pd.Series:
+    """Relative Strength Index (Wilder's smoothing)."""
     delta = close.diff()
     gain = delta.clip(lower=0)
     loss = -delta.clip(upper=0)
@@ -29,6 +32,7 @@ def rsi(close: pd.Series, period: int = 14) -> pd.Series:
 def macd(
     close: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9
 ) -> pd.DataFrame:
+    """MACD line, signal line, and histogram."""
     line = ema(close, fast) - ema(close, slow)
     return pd.DataFrame(
         {"MACD": line, "Signal": line.ewm(span=signal, adjust=False).mean()}
@@ -38,6 +42,7 @@ def macd(
 def bollinger_bands(
     close: pd.Series, window: int = 20, num_std: float = 2.0
 ) -> pd.DataFrame:
+    """Bollinger bands: middle (SMA), upper, and lower bands."""
     mid = close.rolling(window).mean()
     std = close.rolling(window).std(ddof=0)
     return pd.DataFrame(

@@ -201,12 +201,21 @@ def _technicals(data: pd.DataFrame) -> None:
     from ...core import indicators as ind_mod
 
     close = data["Close"]
+
+    sma20 = ind_mod.sma(close, 20)
+    sma200 = ind_mod.sma(close, 200)
+    crosses = ind_mod.crossover_dates(sma20, sma200)
     signals = ind_mod.latest_signals(close)
+    rsi_vals = ind_mod.rsi(close)
+    macd_vals = ind_mod.macd(close)
+    bb_vals = ind_mod.bollinger_bands(close)
 
     st.plotly_chart(
         charts.plot_price_with_indicators(
             close,
-            ind_mod.crossover_dates(ind_mod.sma(close, 20), ind_mod.sma(close, 200)),
+            crosses,
+            sma20=sma20,
+            sma200=sma200,
         ),
         width="stretch",
     )
@@ -217,10 +226,10 @@ def _technicals(data: pd.DataFrame) -> None:
 
     col1, col2 = st.columns(2)
     with col1:
-        st.plotly_chart(charts.plot_rsi(close), width="stretch")
-        st.plotly_chart(charts.plot_bollinger(close), width="stretch")
+        st.plotly_chart(charts.plot_rsi(close, rsi_vals), width="stretch")
+        st.plotly_chart(charts.plot_bollinger(close, bb_vals), width="stretch")
     with col2:
-        st.plotly_chart(charts.plot_macd(close), width="stretch")
+        st.plotly_chart(charts.plot_macd(close, macd_vals), width="stretch")
 
 
 def _risk(data: pd.DataFrame) -> None:
@@ -333,20 +342,20 @@ def render() -> None:
     st.space("small")
 
     tabs = st.tabs(TABS, on_change="rerun")
-    if tabs[0].open:
-        with tabs[0]:
+    with tabs[0]:
+        if tabs[0].open:
             _overview(data)
-    if tabs[1].open:
-        with tabs[1]:
+    with tabs[1]:
+        if tabs[1].open:
             _returns(data)
-    if tabs[2].open:
-        with tabs[2]:
+    with tabs[2]:
+        if tabs[2].open:
             _seasonality(data)
-    if tabs[3].open:
-        with tabs[3]:
+    with tabs[3]:
+        if tabs[3].open:
             _technicals(data)
-    if tabs[4].open:
-        with tabs[4]:
+    with tabs[4]:
+        if tabs[4].open:
             _risk(data)
 
 

@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import datetime
 from typing import TYPE_CHECKING
 
 import streamlit as st
 
 from ..constants import APP_TITLE
 from . import dashboard_charts as charts
-from .sidebar import SESSION_KEY, _analysis_age_caption, format_percent, get_analysis
+from .sidebar import SESSION_KEY, format_percent, get_analysis
 
 if TYPE_CHECKING:
     from ..core.pipeline import AnalysisResult
@@ -72,7 +73,7 @@ def render_forecast_table(result: AnalysisResult) -> None:
 
 def render_quick_stats(result: AnalysisResult) -> None:
     """Quick context cards about the analysed ticker."""
-    from ..core import risk, returns as ret_mod
+    from ..core import returns as ret_mod
 
     close = result.close
     pr = ret_mod.period_returns(close)
@@ -118,3 +119,23 @@ def render_result(result: AnalysisResult) -> None:
     render_forecast_table(result)
     st.divider()
     _analysis_age_caption(result)
+
+
+@st.fragment(run_every=60)
+def _analysis_age_caption(result: AnalysisResult) -> None:
+    """Live 'last run' caption; refreshes itself every minute."""
+    run_at = st.session_state.get(f"{SESSION_KEY}_run_at")
+    if run_at is None:
+        return
+    age = datetime.datetime.now() - run_at
+    if age.total_seconds() < 60:
+        when = "just now"
+    elif age.total_seconds() < 3600:
+        when = f"{int(age.total_seconds() // 60)} minutes ago"
+    else:
+        when = f"{age.total_seconds() / 3600:.1f} hours ago"
+    st.caption(
+        f"Analysis of **{result.symbol}** run at {run_at:%H:%M:%S} — {when}. "
+        "Baseline comparison and a full breakdown of the metrics live on the "
+        "**Findings** page."
+    )

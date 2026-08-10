@@ -44,12 +44,10 @@ def with_alpha(hex_color: str, alpha: float) -> str:
     return f"rgba({r},{g},{b},{alpha})"
 
 
-def cumulative_returns(close) -> "pd.Series":  # noqa: F821
-    import numpy as np
-    import pandas as pd
+def cumulative_returns(close: "pd.Series") -> "pd.Series":
+    from ..core.returns import cumulative_returns_series
 
-    values = close.pct_change().fillna(0.0).to_numpy(dtype=float)
-    return pd.Series(np.cumprod(1.0 + values), index=close.index)
+    return cumulative_returns_series(close)
 
 
 def layout(

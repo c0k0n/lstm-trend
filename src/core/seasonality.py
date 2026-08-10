@@ -6,6 +6,7 @@ import pandas as pd
 
 
 def weekday_effects(returns: pd.Series) -> pd.DataFrame:
+    """Mean return, hit rate, and count for each weekday (Mon-Fri)."""
     dt = pd.Series(pd.DatetimeIndex(returns.index))
     df = pd.DataFrame(
         {

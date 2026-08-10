@@ -260,12 +260,12 @@ Streamlit-specific rendering. Each module has a single responsibility:
 
 | Module                | Responsibility                                              |
 | --------------------- | ----------------------------------------------------------- |
-| `chart_theme.py`      | Shared Plotly theme (`DARK_THEME`), colour palette, `layout()` helper, `with_alpha()`, `cumulative_returns()` |
+| `chart_theme.py`      | Shared Plotly theme (`DARK_THEME`), colour palette, `layout()` helper, `with_alpha()`, delegates `cumulative_returns()` to `returns.py` |
 | `dashboard_charts.py` | Dashboard chart builders: candlestick, loss history, test predictions, forecast, baselines, metric bars |
 | `analytics_charts.py` | Analytics page charts: cumulative returns, histogram+KDE, Q-Q, rolling volatility, ACF, weekday effects, monthly heatmap, underwater, indicators (price+MA, RSI, MACD, Bollinger), volume analysis |
 | `compare_charts.py`   | Compare page charts: normalized prices, cumulative comparison, correlation heatmap, drawdown comparison, risk-vs-return scatter |
-| `sidebar.py`          | Sidebar controls, symbol picker (pills + custom), model-settings form, session state helpers, progress UI, training device detection, analysis age caption |
-| `result_rendering.py` | Metric cards, forecast table with CSV download, quick stats, full dashboard result assembly |
+| `sidebar.py`          | Sidebar controls, symbol picker (pills + custom), model-settings form, session state helpers, progress UI, training device detection |
+| `result_rendering.py` | Metric cards, forecast table with CSV download, quick stats, full dashboard result assembly, analysis age caption (`@st.fragment`) |
 | `pages/nav.py`        | Page registry (`st.Page` objects) for `st.navigation`       |
 | `pages/dashboard.py`  | Run analyses, deep-link query params, render results        |
 | `pages/analytics.py`  | Deep EDA with lazy tabs: Overview, Returns, Seasonality, Technicals, Risk |
@@ -493,6 +493,14 @@ random seed 42, the 20-day moving-average window, and the plot colour palette.
   for the core layer; `chart_theme.py`, `dashboard_charts.py`,
   `analytics_charts.py`, `compare_charts.py` for chart builders; and
   `sidebar.py`, `result_rendering.py` for the UI layer.
+- **Fifth quality pass.** Eliminated six redundant indicator computations in the
+  Analytics Technicals tab (RSI, MACD, Bollinger now computed once in
+  `_technicals` and passed to chart builders). Moved `cumulative_returns()` from
+  `chart_theme.py` to `returns.py` where it belongs, and moved
+  `_analysis_age_caption` from `sidebar.py` to its only consumer
+  `result_rendering.py`. Added docstrings to all public functions in the core
+  layer. Documented magic numbers in `pipeline.py` and removed an unused `risk`
+  import.
 
 The git history still contains all the earlier commits, if you ever want to see
 how it evolved.

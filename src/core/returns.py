@@ -9,10 +9,12 @@ TRADING_DAYS: int = 252
 
 
 def daily_returns(close: pd.Series) -> pd.Series:
+    """Daily percentage returns, with the first NaN dropped."""
     return close.pct_change().dropna()
 
 
 def cumulative_return(close: pd.Series) -> float:
+    """Total cumulative return as a fraction (e.g. 0.5 = +50%)."""
     return float(close.iloc[-1] / close.iloc[0] - 1) if len(close) > 1 else 0.0
 
 
@@ -29,12 +31,14 @@ def annualized_return(close: pd.Series) -> float:
 
 
 def annualized_volatility(returns: pd.Series, periods: int = TRADING_DAYS) -> float:
+    """Annualized volatility from daily returns (std * sqrt(periods))."""
     return float(returns.std(ddof=1) * np.sqrt(periods)) if len(returns) > 1 else 0.0
 
 
 def rolling_volatility(
     returns: pd.Series, window: int = 20, periods: int = TRADING_DAYS
 ) -> pd.Series:
+    """Rolling annualized volatility over a given window."""
     return returns.rolling(window).std(ddof=1) * np.sqrt(periods)
 
 
@@ -64,4 +68,11 @@ def position_in_52w_range(close: pd.Series, window: int = 252) -> float:
 
 
 def normalize_series(close: pd.Series, base: float = 100.0) -> pd.Series:
+    """Rebase a price series so it starts at ``base`` (default 100)."""
     return close / close.iloc[0] * base
+
+
+def cumulative_returns_series(close: pd.Series) -> pd.Series:
+    """Cumulative return series (growth factor starting at 1.0)."""
+    values = close.pct_change().fillna(0.0).to_numpy(dtype=float)
+    return pd.Series(np.cumprod(1.0 + values), index=close.index)

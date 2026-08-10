@@ -184,7 +184,12 @@ def plot_underwater(close: pd.Series) -> go.Figure:
 
 
 def plot_price_with_indicators(
-    close: pd.Series, crosses: pd.DataFrame | None = None
+    close: pd.Series,
+    crosses: pd.DataFrame | None = None,
+    sma20: pd.Series | None = None,
+    sma50: pd.Series | None = None,
+    sma200: pd.Series | None = None,
+    ema50: pd.Series | None = None,
 ) -> go.Figure:
     from ..core.indicators import ema, sma
 
@@ -200,7 +205,7 @@ def plot_price_with_indicators(
     fig.add_trace(
         go.Scatter(
             x=close.index,
-            y=sma(close, 20).values,
+            y=(sma20 if sma20 is not None else sma(close, 20)).values,
             mode="lines",
             name="SMA 20",
             line=dict(color=COLOR_NAIVE),
@@ -209,7 +214,7 @@ def plot_price_with_indicators(
     fig.add_trace(
         go.Scatter(
             x=close.index,
-            y=sma(close, 50).values,
+            y=(sma50 if sma50 is not None else sma(close, 50)).values,
             mode="lines",
             name="SMA 50",
             line=dict(color=COLOR_PREDICTED),
@@ -218,7 +223,7 @@ def plot_price_with_indicators(
     fig.add_trace(
         go.Scatter(
             x=close.index,
-            y=sma(close, 200).values,
+            y=(sma200 if sma200 is not None else sma(close, 200)).values,
             mode="lines",
             name="SMA 200",
             line=dict(color=COLOR_MA),
@@ -227,7 +232,7 @@ def plot_price_with_indicators(
     fig.add_trace(
         go.Scatter(
             x=close.index,
-            y=ema(close, 50).values,
+            y=(ema50 if ema50 is not None else ema(close, 50)).values,
             mode="lines",
             name="EMA 50",
             line=dict(color=COLOR_FUTURE, dash="dot"),
@@ -260,10 +265,10 @@ def plot_price_with_indicators(
     return fig
 
 
-def plot_rsi(close: pd.Series) -> go.Figure:
+def plot_rsi(close: pd.Series, rsi_values: pd.Series | None = None) -> go.Figure:
     from ..core.indicators import rsi
 
-    r = rsi(close)
+    r = rsi_values if rsi_values is not None else rsi(close)
     fig = go.Figure()
     fig.add_trace(
         go.Scatter(
@@ -286,10 +291,10 @@ def plot_rsi(close: pd.Series) -> go.Figure:
     return fig
 
 
-def plot_macd(close: pd.Series) -> go.Figure:
+def plot_macd(close: pd.Series, macd_values: pd.DataFrame | None = None) -> go.Figure:
     from ..core.indicators import macd
 
-    m = macd(close).dropna()
+    m = (macd_values if macd_values is not None else macd(close)).dropna()
     fig = go.Figure()
     colors = [COLOR_PREDICTED if v >= 0 else PALETTE[4] for v in m["Histogram"]]
     fig.add_trace(
@@ -317,10 +322,12 @@ def plot_macd(close: pd.Series) -> go.Figure:
     return fig
 
 
-def plot_bollinger(close: pd.Series) -> go.Figure:
+def plot_bollinger(
+    close: pd.Series, bb_values: pd.DataFrame | None = None
+) -> go.Figure:
     from ..core.indicators import bollinger_bands
 
-    bb = bollinger_bands(close)
+    bb = bb_values if bb_values is not None else bollinger_bands(close)
     fig = go.Figure()
     fig.add_trace(
         go.Scatter(

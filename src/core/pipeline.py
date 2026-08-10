@@ -76,10 +76,12 @@ def run_analysis(
 
     # --- Data ---
     data = download_stock_data(symbol, start_date, end_date)
-    if data is None or len(data) < sequence_length + 10:
+    min_rows = sequence_length + 10  # sequence + buffer for train/test split
+    if data is None or len(data) < min_rows:
+        count = len(data) if data is not None else 0
         raise PipelineError(
             f"Not enough data for **{symbol}** in this date range "
-            f"({0 if data is None else len(data)} rows). "
+            f"({count} rows, need at least {min_rows}). "
             "Try a longer date range or a different ticker."
         )
 

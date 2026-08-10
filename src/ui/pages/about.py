@@ -107,7 +107,7 @@ def render() -> None:
                 "Keras 3 (LSTM)",
                 "PyTorch (torch.cuda optional)",
                 "Yahoo Finance via yfinance + pandas",
-                "scipy (statistics, ADF test, indicators)",
+                "scipy (statistics, distributions, ADF test)",
                 "Plotly (interactive theme-aware charts)",
                 "uv + uv.lock (Python 3.13)",
             ],

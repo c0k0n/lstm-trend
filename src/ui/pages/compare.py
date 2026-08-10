@@ -132,7 +132,10 @@ def render() -> None:
             data = load_data_cached(symbol, start, end)
             loaded[loaded_key] = True
             if data is None or len(data) < 60:
-                st.warning(f"Not enough data for **{symbol}** in this range — skipped.")
+                st.warning(
+                    f"Not enough data for **{symbol}** in this range "
+                    f"({0 if data is None else len(data)} rows, need at least 60) — skipped."
+                )
                 continue
             series[symbol] = data["Close"]
         status.update(

@@ -56,6 +56,7 @@ def get_analysis() -> AnalysisResult | None:
 
 
 def store_analysis(result: AnalysisResult) -> None:
+    """Persist an analysis result and its timestamp in session state."""
     st.session_state[SESSION_KEY] = result
     st.session_state[f"{SESSION_KEY}_run_at"] = datetime.datetime.now()
 
@@ -229,23 +230,3 @@ def run_analysis_with_ui(params: dict[str, Any]) -> AnalysisResult | None:
         st.balloons()
     st.toast(f"Analysis complete for {result.symbol}", icon="✅")
     return result
-
-
-@st.fragment(run_every=60)
-def _analysis_age_caption(result: AnalysisResult) -> None:
-    """Live 'last run' caption; refreshes itself every minute."""
-    run_at = st.session_state.get(f"{SESSION_KEY}_run_at")
-    if run_at is None:
-        return
-    age = datetime.datetime.now() - run_at
-    if age.total_seconds() < 60:
-        when = "just now"
-    elif age.total_seconds() < 3600:
-        when = f"{int(age.total_seconds() // 60)} minutes ago"
-    else:
-        when = f"{age.total_seconds() / 3600:.1f} hours ago"
-    st.caption(
-        f"Analysis of **{result.symbol}** run at {run_at:%H:%M:%S} — {when}. "
-        "Baseline comparison and a full breakdown of the metrics live on the "
-        "**Findings** page."
-    )

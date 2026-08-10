@@ -17,6 +17,7 @@ from .returns import (
 def sharpe_ratio(
     returns: pd.Series, risk_free_rate: float = 0.0, periods: int = TRADING_DAYS
 ) -> float:
+    """Annualized Sharpe ratio (excess return / volatility)."""
     if len(returns) < 2 or returns.std(ddof=1) <= 1e-12:
         return 0.0
     excess = returns.mean() - risk_free_rate / periods
@@ -26,6 +27,7 @@ def sharpe_ratio(
 def sortino_ratio(
     returns: pd.Series, risk_free_rate: float = 0.0, periods: int = TRADING_DAYS
 ) -> float:
+    """Annualized Sortino ratio (excess return / downside deviation)."""
     downside = returns[returns < risk_free_rate / periods]
     if len(downside) < 2 or downside.std(ddof=1) == 0:
         return 0.0
@@ -34,11 +36,13 @@ def sortino_ratio(
 
 
 def max_drawdown(close: pd.Series) -> float:
+    """Largest peak-to-trough decline as a negative fraction."""
     running_max = close.cummax()
     return float((close / running_max - 1).min()) if len(close) > 1 else 0.0
 
 
 def drawdown_series(close: pd.Series) -> pd.Series:
+    """Drawdown at each point relative to the running maximum."""
     return close / close.cummax() - 1
 
 
@@ -57,6 +61,7 @@ def conditional_var(returns: pd.Series, alpha: float = 0.95) -> float:
 
 
 def positive_day_ratio(returns: pd.Series) -> float:
+    """Fraction of trading days with a positive return."""
     return float((returns > 0).mean()) if len(returns) else 0.0
 
 
@@ -104,7 +109,7 @@ def drawdown_events(close: pd.Series, min_depth: float = 0.05) -> pd.DataFrame:
 
 
 def comparison_frame(close: pd.Series) -> dict[str, float]:
-    """Aggregate comparison metrics for a single ticker."""
+    """Aggregate comparison metrics (return, risk, drawdown) for a single ticker."""
     returns = daily_returns(close)
     return {
         "Total return": cumulative_return(close),
