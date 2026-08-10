@@ -12,8 +12,8 @@ import streamlit as st
 from ...core.baselines import MOVING_AVERAGE, NAIVE
 from ...core.metrics import METRIC_NAMES
 from ...constants import APP_TITLE
-from .. import charts
-from ..components import get_analysis
+from .. import dashboard_charts as charts
+from ..sidebar import get_analysis
 
 if TYPE_CHECKING:
     from ...core.pipeline import AnalysisResult

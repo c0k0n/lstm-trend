@@ -11,8 +11,8 @@ from ...constants import (
     DEFAULT_START_DATE,
     SUGGESTED_SYMBOLS,
 )
-from .. import charts
-from ..components import load_data_cached
+from .. import compare_charts as charts
+from ..sidebar import load_data_cached
 
 
 def _controls() -> tuple[list[str], datetime.date, datetime.date]:
@@ -86,11 +86,11 @@ def _watchlist() -> list[str]:
 
 
 def _metrics_table(series: dict[str, pd.Series]) -> pd.DataFrame:
-    from ...core import analytics
+    from ...core import risk
 
     rows = {}
     for name, close in series.items():
-        stats = analytics.comparison_frame(close)
+        stats = risk.comparison_frame(close)
         rows[name] = {**stats, "Trend": _sparkline(close)}
     return pd.DataFrame(rows).T
 

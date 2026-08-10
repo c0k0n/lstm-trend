@@ -12,8 +12,8 @@ from ...constants import (
     DEFAULT_SYMBOL,
     SUGGESTED_SYMBOLS,
 )
-from .. import charts
-from ..components import format_percent, load_data_cached
+from .. import analytics_charts as charts
+from ..sidebar import format_percent, load_data_cached
 
 TABS = ["📈 Overview", "📊 Returns", "📅 Seasonality", "🧭 Technicals", "🕳️ Risk"]
 
@@ -47,13 +47,13 @@ def _controls() -> tuple[str, datetime.date, datetime.date]:
 
 
 def _overview(data: pd.DataFrame) -> None:
-    from ...core import analytics
+    from ...core import risk, returns as ret_mod
 
     close = data["Close"]
-    stats = analytics.comparison_frame(close)
+    stats = risk.comparison_frame(close)
 
-    pr = analytics.period_returns(close)
-    pos = analytics.position_in_52w_range(close)
+    pr = ret_mod.period_returns(close)
+    pos = ret_mod.position_in_52w_range(close)
     last = close.iloc[-1]
 
     m1, m2, m3, m4, m5 = st.columns(5)
@@ -108,12 +108,16 @@ def _overview(data: pd.DataFrame) -> None:
 
 
 def _returns(data: pd.DataFrame) -> None:
-    from ...core import analytics
+    from ...core import (
+        returns as ret_mod,
+        statistics as stats_mod,
+        seasonality as seas_mod,
+    )
 
     close = data["Close"]
-    returns = analytics.daily_returns(close)
-    moments = analytics.return_moments(returns)
-    adf = analytics.adf_summary(close)
+    returns = ret_mod.daily_returns(close)
+    moments = stats_mod.return_moments(returns)
+    adf = stats_mod.adf_summary(close)
 
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Skewness", f"{moments['skewness']:.2f}")
@@ -140,26 +144,26 @@ def _returns(data: pd.DataFrame) -> None:
     with col1:
         st.plotly_chart(charts.plot_rolling_volatility(returns), width="stretch")
     with col2:
-        st.plotly_chart(charts.plot_acf(analytics.acf(returns)), width="stretch")
+        st.plotly_chart(charts.plot_acf(stats_mod.acf(returns)), width="stretch")
 
     st.plotly_chart(
-        charts.plot_weekday_effects(analytics.weekday_effects(returns)), width="stretch"
+        charts.plot_weekday_effects(seas_mod.weekday_effects(returns)), width="stretch"
     )
 
 
 def _seasonality(data: pd.DataFrame) -> None:
-    from ...core import analytics
+    from ...core import seasonality as seas_mod
 
     close = data["Close"]
 
     st.plotly_chart(
-        charts.plot_monthly_heatmap(analytics.monthly_returns_matrix(close)),
+        charts.plot_monthly_heatmap(seas_mod.monthly_returns_matrix(close)),
         width="stretch",
     )
 
     col1, col2 = st.columns(2)
     with col1:
-        months = analytics.month_effects(close)
+        months = seas_mod.month_effects(close)
         months["mean"] = months["mean"].map(lambda v: "—" if pd.isna(v) else f"{v:.2%}")
         months["hit_rate"] = months["hit_rate"].map(
             lambda v: "—" if pd.isna(v) else f"{v:.0%}"
@@ -194,17 +198,15 @@ def _seasonality(data: pd.DataFrame) -> None:
 
 
 def _technicals(data: pd.DataFrame) -> None:
-    from ...core import analytics
+    from ...core import indicators as ind_mod
 
     close = data["Close"]
-    signals = analytics.latest_signals(close)
+    signals = ind_mod.latest_signals(close)
 
     st.plotly_chart(
         charts.plot_price_with_indicators(
             close,
-            analytics.crossover_dates(
-                analytics.sma(close, 20), analytics.sma(close, 200)
-            ),
+            ind_mod.crossover_dates(ind_mod.sma(close, 20), ind_mod.sma(close, 200)),
         ),
         width="stretch",
     )
@@ -222,20 +224,20 @@ def _technicals(data: pd.DataFrame) -> None:
 
 
 def _risk(data: pd.DataFrame) -> None:
-    from ...core import analytics
+    from ...core import returns as ret_mod, risk
 
     close = data["Close"]
-    returns = analytics.daily_returns(close)
+    returns = ret_mod.daily_returns(close)
 
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Max drawdown", f"{analytics.max_drawdown(close):.1%}")
-    col2.metric("VaR 95% (daily)", f"{analytics.value_at_risk(returns):.2%}")
-    col3.metric("CVaR 95% (daily)", f"{analytics.conditional_var(returns):.2%}")
-    col4.metric("Positive days", f"{analytics.positive_day_ratio(returns):.0%}")
+    col1.metric("Max drawdown", f"{risk.max_drawdown(close):.1%}")
+    col2.metric("VaR 95% (daily)", f"{risk.value_at_risk(returns):.2%}")
+    col3.metric("CVaR 95% (daily)", f"{risk.conditional_var(returns):.2%}")
+    col4.metric("Positive days", f"{risk.positive_day_ratio(returns):.0%}")
 
     st.plotly_chart(charts.plot_underwater(close), width="stretch")
 
-    events = analytics.drawdown_events(close)
+    events = risk.drawdown_events(close)
     if len(events):
         events["Depth"] = events["Depth"].map(lambda v: f"{v:.1%}")
         events["Start"] = events["Start"].map(lambda d: d.date())

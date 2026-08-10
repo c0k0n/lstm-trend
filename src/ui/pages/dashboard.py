@@ -6,13 +6,13 @@ import streamlit as st
 
 from ...constants import APP_TITLE, SUGGESTED_SYMBOLS
 from ...core.pipeline import AnalysisResult
-from ..components import (
+from ..sidebar import (
     get_analysis,
     render_hero,
-    render_result,
     render_sidebar_config,
     run_analysis_with_ui,
 )
+from ..result_rendering import render_result
 
 _GETTING_STARTED = """
 1. **Pick a ticker** — use the quick picks or type any symbol in the sidebar.

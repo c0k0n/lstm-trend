@@ -15,6 +15,7 @@ tries to forecast what the price might do over the next few business days.
 - [Features](#features)
 - [Tech stack](#tech-stack)
 - [How it works](#how-it-works)
+- [Architecture](#architecture)
 - [Project structure](#project-structure)
 - [Running it locally](#running-it-locally)
 - [GPU acceleration](#gpu-acceleration)
@@ -73,11 +74,14 @@ In plain words:
 - Fetches daily open/high/low/close/volume data from Yahoo Finance via `yfinance`.
 - Handles empty downloads, bad dates, missing values, and the awkward
   multi-level column layout that `yfinance` sometimes returns.
+- Downloaded data is cached for one hour (`st.cache_data(ttl=3600)`) to avoid
+  hitting Yahoo Finance rate limits on repeated visits.
 
 **Charts (all interactive, Plotly)**
 
 - Closing price over time.
-- Trading volume over time.
+- Trading volume over time — bars coloured green/red by daily return; on
+  histories longer than one year, volume is aggregated to weekly bars.
 - Candlestick chart of open, high, low, and close — long date ranges are
   automatically aggregated into weekly bars so the chart stays readable.
 - Training loss curves (training vs validation).
@@ -88,20 +92,22 @@ In plain words:
 **Model**
 
 - LSTM built with Keras' Functional API: two LSTM layers (100 then 50 units)
-  with dropout after each, a dense layer, and an output layer — compiled with
-  Adam and mean absolute error.
-- Prices are scaled to 0–1 before training (MinMaxScaler), and predictions are
+  with dropout after each, a dense layer (25 units, ReLU), and an output
+  layer — compiled with Adam and mean absolute error.
+- Prices are scaled to 0-1 before training (MinMaxScaler), and predictions are
   scaled back to real prices afterwards.
 - Early stopping (patience 10) with `restore_best_weights`, and every run is
-  seeded (`keras.utils.set_random_seed`) so results are reproducible.
-- A live progress bar and epoch-by-epoch loss readout while training.
+  seeded (`keras.utils.set_random_seed(42)`) so results are reproducible.
+- A live progress bar and epoch-by-epoch loss readout while training, driven by
+  a `ProgressReporterCallback` that reports through plain callables (no
+  Streamlit imports in the core layer).
 
 **Evaluation**
 
 - MSE, RMSE, MAE, MAPE and R², all calculated on real prices rather than scaled
   values, so they actually mean something.
 - The Findings page puts those numbers in context: does the LSTM beat
-  "repeat yesterday" (naive) or a 20-day moving average? The verdict is stated
+  'repeat yesterday' (naive) or a 20-day moving average? The verdict is stated
   honestly either way.
 
 **Interface**
@@ -112,21 +118,23 @@ In plain words:
   architecture, hyperparameters), About (project story).
 - All controls live in the sidebar: ticker and model parameters sit in
   popovers, and the model settings (lookback, horizon, epochs, batch size)
-  are wrapped in a form — nothing takes effect until you press
+  are wrapped in a `st.form` — nothing takes effect until you press
   **Apply model settings**.
-- Forecast horizon picks come as presets (5 / 15 / 30 days or Custom…)
-  via a segmented control instead of a plain slider.
+- Forecast horizon picks come as presets (5 / 15 / 30 days or Custom...)
+  via a `st.segmented_control`. Custom picks a value between 5 and 90.
+- The sidebar shows a **Current settings** summary (ticker, dates, horizon)
+  below the Run button, and the training device (GPU or CPU) is shown at
+  the top of the sidebar.
 - Forecast table with formatted columns and a CSV download button.
 - Dark theme configured in `.streamlit/config.toml`.
 - Shareable deep links: after a run the ticker, dates and horizon are written
   back to the URL, so you can bookmark or share an exact analysis. Preset
-  horizons (5/15/30) land on the matching preset; any other value (5–90)
-  switches the control to Custom… with the forecast length set accordingly.
-- The training device (GPU or CPU) is shown in the sidebar, and a "Current
-  settings" summary (ticker, dates, horizon) sits right below the Run button.
+  horizons (5/15/30) land on the matching preset; any other value (5-90)
+  switches the control to Custom with the forecast length set accordingly.
 - Loading states everywhere: skeletons while data downloads, a streaming
-  verdict on the Findings page, a live "analysis run at …" age indicator that
-  refreshes itself, and a one-time confetti celebration after the first run.
+  verdict on the Findings page, a live "analysis run at ..." age indicator that
+  refreshes itself every 60 seconds (via `@st.fragment(run_every=60)`), and a
+  one-time confetti celebration after the first run.
 - A "how to read the charts" dialog on the Findings page and a theme-aware
   app footer with the GitHub link.
 - Rounded widget corners via Streamlit theming.
@@ -140,17 +148,18 @@ In plain words:
   a time, with a count caption.
 - Returns analysis: histogram with KDE, Q-Q plot vs normal, rolling
   volatility, autocorrelation, weekday effects, skewness/kurtosis.
-- Seasonality: year × month return heatmap, average return and hit rate by
+- Seasonality: year x month return heatmap, average return and hit rate by
   month and weekday.
-- Stationarity: Augmented Dickey–Fuller test on log prices with a plain-English
+- Stationarity: Augmented Dickey-Fuller test on log prices with a plain-English
   interpretation.
 - Technical indicators: SMA 20/50/200, EMA 50, golden/death cross markers,
-  RSI (14), MACD (12,26,9), Bollinger bands (20, 2σ), plus a human-readable
+  RSI (14), MACD (12,26,9), Bollinger bands (20, 2 sigma), plus a human-readable
   "current signals" summary.
 - Volume analysis: volume bars coloured by daily move (weekly bars on long
   histories), and a volume-vs-return scatter.
 - Lazy tabs: only the tab you open actually computes — the other four stay
   idle until you click them.
+- Skeleton placeholders on first data load, then cached for the session.
 
 **Compare (multi-ticker)**
 
@@ -161,29 +170,32 @@ In plain words:
   max drawdown, VaR, CVaR, positive days) with CSV download. Each row carries
   a sparkline of the price trend.
 - An editable watchlist (add/remove tickers in the Compare page) that feeds
-  the comparison when enabled.
-
+  the comparison when enabled; requires at least 2 tickers with data.
 ## Tech stack
 
-| Piece            | What it's used for                                        |
-| ---------------- | --------------------------------------------------------- |
-| Python 3.13      | The language everything is written in                     |
-| Streamlit 1.61+  | The web app framework                                     |
-| yfinance         | Downloading stock data from Yahoo Finance                 |
-| pandas / numpy   | Data wrangling and numerical work                         |
-| Keras 3 + PyTorch| Building and training the LSTM model                      |
-| scikit-learn     | MinMaxScaler, MSE and R² metrics                          |
-| scipy            | Distributions, KDE, Q-Q plots, moments, ADF test          |
-| Plotly           | Interactive charts                                        |
-| uv               | Environment and dependency management                     |
+| Piece             | Version    | What it's used for                                        |
+| ----------------- | ---------- | --------------------------------------------------------- |
+| Python            | 3.13       | The language everything is written in                     |
+| Streamlit         | 1.61.1     | The web app framework                                     |
+| yfinance          | 1.5.2      | Downloading stock data from Yahoo Finance                 |
+| pandas            | 3.0.5      | Data wrangling, time series, DataFrames                   |
+| NumPy             | 2.5.1      | Numerical operations, array slicing                       |
+| Keras             | 3.15.1     | Building and training the LSTM model (Functional API)     |
+| PyTorch           | 2.13.0     | Deep learning backend (GPU via CUDA when available)       |
+| scikit-learn      | 1.9.0      | MinMaxScaler, MSE, MAE, MAPE, R² metrics                  |
+| scipy             | 1.18.0     | Distributions, KDE, Q-Q plots, moments, ADF test          |
+| Plotly            | 6.9.0      | Interactive charts                                        |
+| uv                | (latest)   | Environment and dependency management                     |
+
+Versions are pinned in `pyproject.toml` and locked in `uv.lock`.
 
 ## How it works
 
 The pipeline is simple enough to describe in one breath:
 
 ```
-download data → scale prices → build sequences → split train/test
-             → train LSTM → evaluate → predict future → plot
+download data -> scale prices -> build sequences -> split train/test
+             -> train LSTM -> evaluate -> predict future -> plot
 ```
 
 A few details worth knowing:
@@ -205,7 +217,8 @@ A few details worth knowing:
   appended to the window, the oldest day drops off, and the model predicts
   again. That means small errors can build up over the horizon — the further
   ahead you ask, the less reliable it gets. The forecast dates are business
-  days only, since that's when markets are actually open.
+  days only, since that's when markets are actually open. Each forecast row
+  also carries a day-over-day change percentage.
 - **LSTM in one sentence.** An LSTM is a neural network with a small internal
   memory, so it can hold onto patterns from earlier in a sequence instead of
   only seeing the most recent value. That makes it a natural fit for time
@@ -216,46 +229,120 @@ A few details worth knowing:
   on (Keras calls the functional PyTorch API), so it is filtered out in
   `src/core/lstm_model.py`.
 
+## Architecture
+
+The codebase is split into two clean layers:
+
+### `src/core/` — pure analysis logic
+
+No Streamlit imports. Every function here is testable in isolation, which keeps
+the business logic portable and debuggable:
+
+| Module              | Responsibility                                              |
+| ------------------- | ----------------------------------------------------------- |
+| `data_loader.py`    | Download OHLCV from yfinance, flatten MultiIndex columns    |
+| `preprocessing.py`  | MinMaxScaler wrapping, sliding-window sequence creation     |
+| `callbacks.py`      | `ProgressReporterCallback` — reports epoch progress via plain callables |
+| `lstm_model.py`     | Model definition (Functional API), training, evaluation, step-wise forecasting |
+| `pipeline.py`       | `run_analysis()` orchestrator, `AnalysisResult` dataclass, `PipelineError` |
+| `baselines.py`      | Naive (repeat yesterday) and moving-average forecasts        |
+| `metrics.py`        | MSE / RMSE / MAE / MAPE / R² on original price scale       |
+| `returns.py`        | Daily/cumulative/annualized returns, CAGR, trailing periods, 52-week position |
+| `risk.py`           | Sharpe, Sortino, max drawdown, drawdown events, VaR, CVaR  |
+| `seasonality.py`    | Weekday effects, monthly return heatmap, month effects       |
+| `statistics.py`     | Return moments (skew/kurtosis), ADF test, autocorrelation   |
+| `indicators.py`     | SMA, EMA, RSI, MACD, Bollinger bands, crossover detection   |
+| `constants.py`      | All shared defaults, URL constants, plot colour palette      |
+
+### `src/ui/` — Streamlit presentation layer
+
+Streamlit-specific rendering. Each module has a single responsibility:
+
+| Module                | Responsibility                                              |
+| --------------------- | ----------------------------------------------------------- |
+| `chart_theme.py`      | Shared Plotly theme (`DARK_THEME`), colour palette, `layout()` helper, `with_alpha()`, `cumulative_returns()` |
+| `dashboard_charts.py` | Dashboard chart builders: candlestick, loss history, test predictions, forecast, baselines, metric bars |
+| `analytics_charts.py` | Analytics page charts: cumulative returns, histogram+KDE, Q-Q, rolling volatility, ACF, weekday effects, monthly heatmap, underwater, indicators (price+MA, RSI, MACD, Bollinger), volume analysis |
+| `compare_charts.py`   | Compare page charts: normalized prices, cumulative comparison, correlation heatmap, drawdown comparison, risk-vs-return scatter |
+| `sidebar.py`          | Sidebar controls, symbol picker (pills + custom), model-settings form, session state helpers, progress UI, training device detection, analysis age caption |
+| `result_rendering.py` | Metric cards, forecast table with CSV download, quick stats, full dashboard result assembly |
+| `pages/nav.py`        | Page registry (`st.Page` objects) for `st.navigation`       |
+| `pages/dashboard.py`  | Run analyses, deep-link query params, render results        |
+| `pages/analytics.py`  | Deep EDA with lazy tabs: Overview, Returns, Seasonality, Technicals, Risk |
+| `pages/compare.py`    | Multi-ticker comparison with editable watchlist             |
+| `pages/findings.py`   | Empirical verdict: LSTM vs baselines with streaming text    |
+| `pages/methodology.py`| Pipeline/architecture Mermaid diagrams, hyperparameter table, design trade-offs |
+| `pages/about.py`      | Project story, FAQ, tech stack table, run instructions      |
+
+### Key patterns
+
+- **Session state sharing.** The `AnalysisResult` is stored in
+  `st.session_state["analysis"]` so every page can read it without re-running
+  the pipeline. The Findings page, for example, just calls `get_analysis()`.
+- **Form-gated model settings.** Lookback, horizon, epochs, and batch size live
+  inside a `st.form` — nothing takes effect until the user presses Apply. Date
+  pickers take effect immediately.
+- **Progress via callables.** The `ProgressReporterCallback` receives two
+  callbacks (`on_epoch`, `on_finish`) and reports to them. The UI layer in
+  `sidebar.py` maps these to an `st.progress` bar inside an `st.status` box.
+- **Lazy tab loading.** The Analytics page uses `if tabs[i].open:` so each tab
+  only computes when the user clicks it — no wasted work.
+- **Fragment-based auto-refresh.** The "analysis run at ..." age caption uses
+  `@st.fragment(run_every=60)` to refresh itself every minute without a full
+  page rerun.
+- **Cached data downloads.** `load_data_cached()` wraps yfinance in
+  `st.cache_data(ttl=3600)` — one hour of caching to avoid rate limits.
+- **Device detection.** `training_device()` uses `@lru_cache(maxsize=1)` and
+  checks `torch.cuda.is_available()` once, then never recomputes.
 ## Project structure
 
 ```
 lstm-trend/
-├── streamlit_app.py          # Entry point: st.navigation + HTML footer
-├── .gitignore                # Git ignore rules
-├── .python-version           # Pins Python 3.13 for uv
+├── streamlit_app.py            # Entry point: sets KERAS_BACKEND, st.navigation + HTML footer
+├── .gitignore                  # Git ignore rules (excludes AGENTS.md, streamlitinfolinks.txt)
+├── .python-version             # Pins Python 3.13 for uv
 ├── .streamlit/
-│   └── config.toml           # Dark theme, widget borders, usage stats off
+│   └── config.toml             # Dark theme, widget borders, usage stats off
 ├── src/
 │   ├── __init__.py
-│   ├── constants.py          # Defaults and shared settings
-│   ├── core/                 # Pure logic, no Streamlit imports
+│   ├── constants.py            # All shared defaults, URLs, plot colour palette
+│   ├── core/                   # Pure analysis logic — no Streamlit imports
 │   │   ├── __init__.py
-│   │   ├── data_loader.py    # yfinance download + column flattening
-│   │   ├── preprocessing.py  # Scaling and sequence creation
-│   │   ├── metrics.py        # MSE / RMSE / MAE / MAPE / R²
-│   │   ├── baselines.py      # Naive and moving-average baselines
-│   │   ├── analytics.py      # EDA: risk metrics, drawdowns, seasonality, indicators
-│   │   ├── callbacks.py      # Keras callback driving progress callbacks
-│   │   ├── lstm_model.py     # Model creation, training, forecasting
-│   │   └── pipeline.py       # run_analysis(): the whole pipeline, typed
-│   └── ui/                   # Streamlit-specific rendering
+│   │   ├── data_loader.py      # yfinance download + MultiIndex column flattening
+│   │   ├── preprocessing.py    # MinMaxScaler, sliding-window sequence creation
+│   │   ├── callbacks.py        # ProgressReporterCallback (callable-based, no UI deps)
+│   │   ├── lstm_model.py       # Model creation (Functional API), training, evaluation, forecasting
+│   │   ├── pipeline.py         # run_analysis() orchestrator, AnalysisResult dataclass, PipelineError
+│   │   ├── baselines.py        # Naive (repeat yesterday) and moving-average baselines
+│   │   ├── metrics.py          # MSE / RMSE / MAE / MAPE / R² on original price scale
+│   │   ├── returns.py          # Daily/cumulative/annualized returns, CAGR, trailing periods
+│   │   ├── risk.py             # Sharpe, Sortino, drawdowns, VaR, CVaR, comparison_frame()
+│   │   ├── seasonality.py      # Weekday effects, monthly return heatmap, month effects
+│   │   ├── statistics.py       # Return moments, ADF test (MacKinnon p-value), autocorrelation
+│   │   └── indicators.py       # SMA, EMA, RSI, MACD, Bollinger, crossover detection, latest_signals()
+│   └── ui/                     # Streamlit-specific rendering
 │       ├── __init__.py
-│       ├── charts.py         # All Plotly chart builders
-│       ├── components.py     # Sidebar config, progress UI, result rendering
-│       └── pages/            # One module per app page
+│       ├── chart_theme.py      # DARK_THEME, PALETTE, layout(), with_alpha(), cumulative_returns()
+│       ├── dashboard_charts.py # Candlestick, loss history, test predictions, forecast, baselines, RMSE bars
+│       ├── analytics_charts.py # 15 chart builders for returns, risk, seasonality, indicators, volume
+│       ├── compare_charts.py   # Normalized prices, cumulative comparison, correlation, drawdown, risk scatter
+│       ├── sidebar.py          # Sidebar config, symbol picker, model-settings form, progress UI, session helpers
+│       ├── result_rendering.py # Metric cards, forecast table + CSV, quick stats, full dashboard assembly
+│       └── pages/              # One module per app page
 │           ├── __init__.py
-│           ├── nav.py        # Page registry (st.Page objects) for navigation
-│           ├── dashboard.py  # Run analyses, see charts and forecast
-│           ├── analytics.py  # Deep EDA of any ticker
-│           ├── compare.py    # Multi-ticker analysis
-│           ├── findings.py   # Metrics, baseline comparison, caveats
-│           ├── methodology.py# Pipeline diagram, architecture, hyperparameters
-│           └── about.py      # Project story
-├── streamlitinfolinks.txt    # Index of official Streamlit docs links (dev reference)
-├── pyproject.toml            # Project metadata + dependencies (uv)
-├── uv.lock                   # Locked dependency versions
-├── AGENTS.md                 # Instructions for AI coding tools
-└── README.md                 # This file
+│           ├── nav.py          # Page registry (st.Page objects) for st.navigation
+│           ├── dashboard.py    # Run analyses, query-param deep links, render results
+│           ├── analytics.py    # Deep EDA with lazy tabs: Overview, Returns, Seasonality, Technicals, Risk
+│           ├── compare.py      # Multi-ticker comparison with editable watchlist
+│           ├── findings.py     # LSTM vs baselines: streaming verdict, metrics table, charts help dialog
+│           ├── methodology.py  # Mermaid diagrams, hyperparameter table, design trade-offs
+│           └── about.py        # Project story, FAQ, tech stack, run instructions, acknowledgements
+├── streamlitinfolinks.txt      # Index of official Streamlit docs links (dev reference, gitignored)
+├── pyproject.toml              # Project metadata + dependencies (uv)
+├── uv.lock                     # Locked dependency versions
+├── AGENTS.md                   # Instructions for AI coding tools (gitignored)
+├── LICENSE                     # MIT
+└── README.md                   # This file
 ```
 
 ## Running it locally
@@ -291,6 +378,9 @@ A few notes:
 - The first run downloads PyTorch, so be patient if `uv sync` takes a while.
 - The first analysis downloads data and trains a model, which takes a bit of
   time too — the progress bar will keep you company.
+- The minimum data requirement is `sequence_length + 10` trading days (default:
+  70). Shorter ranges fail with a friendly error instead of crashing.
+- The Analytics page requires at least 60 trading days of data.
 
 ## GPU acceleration
 
@@ -299,7 +389,7 @@ its CUDA libraries inside its own wheels, which means:
 
 - on a machine with an NVIDIA GPU and working drivers, the app picks up the GPU
   automatically — no environment variables, no extra packages,
-- the sidebar shows which device was used ("Training device: GPU"),
+- the sidebar shows which device was used ("Training device: GPU (NVIDIA ...)"),
 - on machines without a GPU (including Streamlit Community Cloud) it silently
   runs on CPU.
 
@@ -340,24 +430,24 @@ Everything is controlled from the sidebar (inside popovers):
 
 | Setting                 | What it does                            | Range          | Default |
 | ----------------------- | --------------------------------------- | -------------- | ------- |
-| Ticker                  | Stock to analyse (`AAPL`, `MSFT`, … or Custom) | —        | `AAPL`  |
-| Start / End Date        | Historical data range                   | —              | 2020 → today |
-| Lookback window         | Days of history the model sees per step | 10 – 120       | 60      |
-| Prediction horizon      | Business days to forecast ahead (preset or Custom) | 5 – 90 | 15  |
-| Epochs                  | Training passes over the data           | 1 – 100        | 50      |
-| Batch size              | Samples per training step (preset steps) | 8 – 128       | 32      |
+| Ticker                  | Stock to analyse (`AAPL`, `MSFT`, ... or Custom) | --        | `AAPL`  |
+| Start / End Date        | Historical data range                   | --             | 2020 -> today |
+| Lookback window         | Days of history the model sees per step | 10 - 120       | 60      |
+| Prediction horizon      | Business days to forecast ahead (preset or Custom) | 5 - 90 | 15  |
+| Epochs                  | Training passes over the data           | 1 - 100        | 50      |
+| Batch size              | Samples per training step (preset steps) | 8 - 128       | 32      |
 
 The model settings only apply once **Apply model settings** is pressed; the
 date pickers take effect immediately. You can also deep-link any analysis:
 `?ticker=MSFT&start=2024-01-01&end=2025-01-01&horizon=30` prefills the
 sidebar and triggers a run. `horizon` accepts the presets (5, 15, 30) or any
-integer from 5–90 — non-preset values switch the segmented control to
-Custom… with your number as the forecast length.
+integer from 5-90 — non-preset values switch the segmented control to
+Custom with your number as the forecast length.
 
 Some other fixed settings live in `src/constants.py`: 80/20 train-test split,
-10% validation split, 100 LSTM units, 0.2 dropout, early-stopping patience,
-the moving-average window, and the plot colours.
-
+10% validation split, 100 LSTM units (layer 1), 50 units (layer 2),
+25 dense units, 0.2 dropout, early-stopping patience of 10,
+random seed 42, the 20-day moving-average window, and the plot colour palette.
 ## Project history
 
 - **2023 — FYP start.** First version of the app: Streamlit, Keras LSTM, a few
@@ -379,7 +469,7 @@ the moving-average window, and the plot colours.
   hard-coded footer link; removed dead code and leftover dependencies,
   deduplicated chart colours and page configuration, and modernized the typing.
 - **Second quality pass.** Found and fixed the worst bug in the app: the
-  drawdown detector silently dropped every drawdown event (a 10-day −50% crash
+  drawdown detector silently dropped every drawdown event (a 10-day -50% crash
   reported "no drawdowns"). Also replaced magic calendar lookbacks with exact
   business-day offsets, fixed mislabelled monthly-returns heatmap columns and
   mismatched bar colours in the RMSE chart, made sequence creation zero-copy
@@ -397,11 +487,17 @@ the moving-average window, and the plot colours.
   extracted the magic millisecond-per-day constant in the volume chart, and
   simplified the drawdown event detector by dropping a redundant `pd.Timestamp()`
   wrapper that was masking a type-checker issue.
+- **Module split.** Decomposed the three monolithic files (`analytics.py`,
+  `charts.py`, `components.py`) into focused, single-responsibility modules:
+  `returns.py`, `risk.py`, `seasonality.py`, `statistics.py`, `indicators.py`
+  for the core layer; `chart_theme.py`, `dashboard_charts.py`,
+  `analytics_charts.py`, `compare_charts.py` for chart builders; and
+  `sidebar.py`, `result_rendering.py` for the UI layer.
 
 The git history still contains all the earlier commits, if you ever want to see
 how it evolved.
 
-## Honest limitations
+## Limitations
 
 I don't want this README to oversell the project, so here are the things I know
 are weak or missing:
