@@ -1,5 +1,7 @@
 # LSTM Trend
 
+![Deployment status](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/c0k0n/022a911cc4be3c1b090dbac0a39854a7/raw/deployment-status.json)
+
 A Streamlit web app that pulls historical stock data from Yahoo Finance, trains a
 small LSTM (Long Short-Term Memory) neural network on the closing prices, and
 tries to forecast what the price might do over the next few business days.
@@ -171,6 +173,7 @@ In plain words:
   a sparkline of the price trend.
 - An editable watchlist (add/remove tickers in the Compare page) that feeds
   the comparison when enabled; requires at least 2 tickers with data.
+
 ## Tech stack
 
 | Piece             | Version    | What it's used for                                        |
@@ -294,6 +297,7 @@ Streamlit-specific rendering. Each module has a single responsibility:
   `st.cache_data(ttl=3600)` — one hour of caching to avoid rate limits.
 - **Device detection.** `training_device()` uses `@lru_cache(maxsize=1)` and
   checks `torch.cuda.is_available()` once, then never recomputes.
+
 ## Project structure
 
 ```
@@ -448,6 +452,7 @@ Some other fixed settings live in `src/constants.py`: 80/20 train-test split,
 10% validation split, 100 LSTM units (layer 1), 50 units (layer 2),
 25 dense units, 0.2 dropout, early-stopping patience of 10,
 random seed 42, the 20-day moving-average window, and the plot colour palette.
+
 ## Project history
 
 - **2023 — FYP start.** First version of the app: Streamlit, Keras LSTM, a few
