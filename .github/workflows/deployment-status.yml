@@ -15,11 +15,18 @@ concurrency:
 
 permissions:
   contents: read
+  # Required so the job can register the deployment in the repo's sidebar.
+  deployments: write
 
 jobs:
   ping:
     name: Check live deployment
     runs-on: ubuntu-latest
+    # Registers a "production" environment so the repo sidebar shows a
+    # Deployments entry linking to the live app.
+    environment:
+      name: production
+      url: https://lstm-trend.streamlit.app
     steps:
       - name: Check the deployed app is reachable
         id: ping
