@@ -1,7 +1,5 @@
 # LSTM Trend
 
-![Deployment status](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/c0k0n/022a911cc4be3c1b090dbac0a39854a7/raw/deployment-status.json)
-
 A Streamlit web app that pulls historical stock data from Yahoo Finance, trains a
 small LSTM (Long Short-Term Memory) neural network on the closing prices, and
 tries to forecast what the price might do over the next few business days.
