@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 250" width="860" height="250" role="img" aria-label="The LSTM network: two recurrent layers with dropout, then two dense layers">
+  <defs>
+    <style>
+      .bg    { fill: #0E1117; }
+      .box   { fill: #161B24; stroke: #3D4452; stroke-width: 1.5; }
+      .boxIo { fill: #161B24; stroke: #4FB477; stroke-width: 1.5; }
+      .boxRe { fill: #161B24; stroke: #64B5F6; stroke-width: 1.5; }
+      .boxDr { fill: #161B24; stroke: #3D4452; stroke-width: 1.5; stroke-dasharray: 4 3; }
+      .boxDn { fill: #161B24; stroke: #FFA726; stroke-width: 1.5; }
+      .t     { fill: #F0F2F6; font: 600 12px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; text-anchor: middle; }
+      .s     { fill: #9AA1AD; font: 400 10px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; text-anchor: middle; }
+      .lbl   { fill: #F0F2F6; font: 600 13px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+      .sub   { fill: #9AA1AD; font: 400 11px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+      .arrow { stroke: #3D4452; stroke-width: 1.5; fill: none; marker-end: url(#head); }
+      .dot   { fill: #4FB477; }
+    </style>
+    <marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#3D4452"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="860" height="250" rx="12"/>
+
+  <text class="lbl" x="28" y="30">The network — Keras 3 Functional API</text>
+  <text class="sub" x="28" y="48">A window of 60 scaled closes walks in; one predicted close walks out.</text>
+
+  <!-- Boxes: width 96, gap 16 => 7*96 + 6*16 = 768, start x = 46 -->
+  <g>
+    <rect class="boxIo" x="46"  y="80" width="96" height="62" rx="9"/>
+    <text class="t" x="94"  y="106">Input</text>
+    <text class="s" x="94"  y="123">(60, 1)</text>
+
+    <rect class="boxRe" x="158" y="80" width="96" height="62" rx="9"/>
+    <text class="t" x="206" y="106">LSTM</text>
+    <text class="s" x="206" y="123">100 units</text>
+
+    <rect class="boxDr" x="270" y="80" width="96" height="62" rx="9"/>
+    <text class="t" x="318" y="106">Dropout</text>
+    <text class="s" x="318" y="123">0.2</text>
+
+    <rect class="boxRe" x="382" y="80" width="96" height="62" rx="9"/>
+    <text class="t" x="430" y="106">LSTM</text>
+    <text class="s" x="430" y="123">50 units</text>
+
+    <rect class="boxDr" x="494" y="80" width="96" height="62" rx="9"/>
+    <text class="t" x="542" y="106">Dropout</text>
+    <text class="s" x="542" y="123">0.2</text>
+
+    <rect class="boxDn" x="606" y="80" width="96" height="62" rx="9"/>
+    <text class="t" x="654" y="106">Dense</text>
+    <text class="s" x="654" y="123">25 · ReLU</text>
+
+    <rect class="boxDn" x="718" y="80" width="96" height="62" rx="9"/>
+    <text class="t" x="766" y="106">Dense</text>
+    <text class="s" x="766" y="123">1 · linear</text>
+  </g>
+
+  <!-- Arrows -->
+  <g>
+    <line class="arrow" x1="142" y1="111" x2="156" y2="111"/>
+    <line class="arrow" x1="254" y1="111" x2="268" y2="111"/>
+    <line class="arrow" x1="366" y1="111" x2="380" y2="111"/>
+    <line class="arrow" x1="478" y1="111" x2="492" y2="111"/>
+    <line class="arrow" x1="590" y1="111" x2="604" y2="111"/>
+    <line class="arrow" x1="702" y1="111" x2="716" y2="111"/>
+  </g>
+
+  <!-- Travelling pulse -->
+  <circle class="dot" r="4" cy="111" cx="46">
+    <animate attributeName="cx" values="46;814" dur="3.2s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.08;0.9;1" dur="3.2s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- Annotations -->
+  <text class="sub" x="46"  y="172">↑ a window, not a single day</text>
+  <text class="sub" x="158" y="172">return_sequences=True</text>
+  <text class="sub" x="382" y="172">only the last step is kept</text>
+
+  <rect x="46" y="192" width="9" height="9" rx="2" fill="#4FB477"/>
+  <text class="sub" x="61" y="200">recurrent — carries memory across the window</text>
+  <rect x="46" y="212" width="9" height="9" rx="2" fill="#FFA726"/>
+  <text class="sub" x="61" y="220">dense — reads the memory down to one number</text>
+  <rect x="46" y="232" width="9" height="9" rx="2" fill="#3D4452"/>
+  <text class="sub" x="61" y="240">dropout — random 20% silence, a hedge against memorising</text>
+
+  <text class="sub" x="470" y="200">Optimizer: Adam · Loss: mean absolute error</text>
+  <text class="sub" x="470" y="220">Early stopping on val_loss, patience 10, best weights restored</text>
+  <text class="sub" x="470" y="240">Seeded with keras.utils.set_random_seed(42) — a rerun reproduces the run</text>
+</svg>

@@ -28,3 +28,14 @@ Repository = "https://github.com/c0k0n/lstm-trend"
 
 [tool.uv]
 package = false
+
+# Type checking: keras, plotly, scipy and yfinance ship no type stubs, so strict
+# mode reports ~250 "unknown type" diagnostics that no amount of our own
+# annotation can clear. "standard" drops the unknown-type and missing-stub
+# families while keeping every genuine error — reportAttributeAccessIssue in
+# particular stays an error in every mode, so real attribute bugs still surface.
+[tool.pyright]
+typeCheckingMode = "standard"
+pythonVersion = "3.13"
+include = ["src", "streamlit_app.py"]
+exclude = [".venv", "**/__pycache__"]

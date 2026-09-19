@@ -22,8 +22,7 @@ def adf_summary(close: pd.Series) -> dict[str, object]:
     H0: β = 0 (unit root). Critical values from Dickey-Fuller distribution.
     """
     clean = close.dropna()
-    series = np.log(clean[clean > 0])
-    y = series.to_numpy(dtype=float)
+    y = np.log(clean[clean > 0].to_numpy(dtype=float))
     if len(y) < 5:
         return {
             "statistic": 0.0,

@@ -23,6 +23,7 @@ env/
 # Local reference notes (not part of the app)
 streamlitinfolinks.txt
 note.txt
+knownerrors.txt
 
 # OS / editor
 .DS_Store
@@ -31,3 +32,4 @@ note.txt
 
 # AI
 AGENTS.md
+.workbuddy-ai/

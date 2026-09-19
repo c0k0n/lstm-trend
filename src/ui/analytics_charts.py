@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 import plotly.graph_objects as go
 
@@ -33,7 +32,7 @@ def plot_return_histogram(returns: pd.Series) -> go.Figure:
     fig.add_trace(
         go.Histogram(x=returns.values, nbinsx=60, name="Daily returns", opacity=0.7)
     )
-    xs = np.linspace(returns.min(), returns.max(), 300)
+    xs: npt.NDArray[np.float64] = np.linspace(returns.min(), returns.max(), 300)
     kde = gaussian_kde(returns.values)
     fig.add_trace(
         go.Scatter(
@@ -60,9 +59,9 @@ def plot_qq(returns: pd.Series) -> go.Figure:
     (osm, osr), (slope, intercept, _) = scipy_stats.probplot(
         returns.dropna(), dist="norm"
     )
-    osm_arr = np.asarray(osm, dtype=float)
-    osr_arr = np.asarray(osr, dtype=float)
-    line_y = slope * osm_arr + intercept
+    osm_arr: npt.NDArray[np.float64] = np.asarray(osm, dtype=float)
+    osr_arr: npt.NDArray[np.float64] = np.asarray(osr, dtype=float)
+    line_y = float(slope) * osm_arr + float(intercept)
     fig = go.Figure()
     fig.add_trace(
         go.Scatter(

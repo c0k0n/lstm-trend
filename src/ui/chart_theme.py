@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -18,14 +18,14 @@ from ..constants import (
     PLOT_GRID_COLOR,
 )
 
-DARK_THEME = dict(
+DARK_THEME: dict[str, str] = dict(
     template="plotly_dark",
     font=PLOT_FONT_COLOR,
     grid=PLOT_GRID_COLOR,
     actual=COLOR_ACTUAL,
 )
 
-PALETTE = (
+PALETTE: tuple[str, ...] = (
     COLOR_PREDICTED,
     COLOR_NAIVE,
     COLOR_FUTURE,
@@ -55,7 +55,7 @@ def layout(
     xaxis_title: str = "Date",
     yaxis_title: str = "Price (USD)",
     height: int = 420,
-) -> dict:
+) -> dict[str, Any]:
     return dict(
         title=dict(text=title),
         xaxis_title=xaxis_title,

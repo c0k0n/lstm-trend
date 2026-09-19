@@ -200,9 +200,10 @@ def render() -> None:
         st.plotly_chart(charts.plot_cumulative_comparison(series), width="stretch")
 
     # Correlation of daily returns (aligned on common dates)
-    returns = pd.DataFrame(
-        {name: s.pct_change() for name, s in series.items()}
-    ).dropna()
+    daily_returns: dict[str, pd.Series] = {
+        name: s.pct_change() for name, s in series.items()
+    }
+    returns = pd.DataFrame(daily_returns).dropna()
     corr = returns.corr()
     col1, col2 = st.columns([3, 2])
     with col1:

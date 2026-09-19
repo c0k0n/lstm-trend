@@ -100,7 +100,7 @@ def make_future_predictions(
     so small errors can accumulate as the horizon grows.
     """
     current = scaled_close[-sequence_length:].reshape(1, sequence_length, 1).copy()
-    predicted = []
+    predicted: list[float] = []
 
     for _ in range(future_steps):
         next_step = model.predict(current, verbose="0")[0, 0]

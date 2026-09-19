@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
+from functools import partial
 from typing import TYPE_CHECKING
 
 import pandas as pd
@@ -74,6 +75,20 @@ def _metrics_table(result: AnalysisResult) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _format_metric(value: float, metric: str) -> str:
+    """Render one metric the way it reads best: dollars, percent, or plain."""
+    if metric == "r2":
+        return f"{value:.4f}"
+    if metric == "mape":
+        return f"{value:.2%}"
+    return f"${value:,.2f}"
+
+
+def _metric_formatter(metric: str) -> Callable[[float], str]:
+    """Bind a metric name to its formatter, for use with ``DataFrame.apply``."""
+    return partial(_format_metric, metric=metric)
+
+
 def render() -> None:
     st.set_page_config(
         page_title=f"Findings — {APP_TITLE} | LSTM vs baselines",
@@ -132,17 +147,10 @@ def render() -> None:
     st.subheader("How the models compare")
     table = _metrics_table(result)
 
-    def fmt(v: float, metric: str) -> str:
-        if metric == "r2":
-            return f"{v:.4f}"
-        if metric == "mape":
-            return f"{v:.2%}"
-        return f"${v:,.2f}"
-
     display = table.rename(columns=METRIC_LABELS)
     for metric in METRIC_NAMES:
         display[METRIC_LABELS[metric]] = display[METRIC_LABELS[metric]].apply(
-            lambda v, m=metric: fmt(v, m)
+            _metric_formatter(metric)
         )
 
     st.dataframe(display, hide_index=True, width="stretch")

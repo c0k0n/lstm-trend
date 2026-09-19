@@ -65,6 +65,8 @@ st.set_page_config(
 
 pages = list(get_pages().values())
 
-st.navigation(pages, position="sidebar").run()
+# `streamlit.navigation` is both a re-exported function and a sub-package, and
+# type checkers bind the package. The public function is correct at runtime.
+st.navigation(pages, position="sidebar").run()  # ty: ignore[call-non-callable]
 
 st.html(_footer_html())

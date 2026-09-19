@@ -64,7 +64,8 @@ def month_effects(close: pd.Series) -> pd.DataFrame:
     months so each row always maps to the right calendar month.
     """
     monthly = close.resample("ME").last().pct_change().dropna()
-    table = monthly.groupby(monthly.index.month).agg(
+    months = pd.Series(monthly.index).dt.month.to_numpy()
+    table = monthly.groupby(months).agg(
         mean="mean", hit_rate=lambda s: (s > 0).mean(), count="count"
     )
     table = table.reindex(range(1, 13))

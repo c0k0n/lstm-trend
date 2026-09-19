@@ -1,6 +1,7 @@
 """Dashboard page: run the analysis and explore the results."""
 
 import datetime
+from typing import Any
 
 import streamlit as st
 
@@ -64,7 +65,7 @@ def _apply_query_params() -> None:
             st.session_state["fut_steps"] = min(90, max(5, value))
 
 
-def _write_query_params(params: dict) -> None:
+def _write_query_params(params: dict[str, Any]) -> None:
     """Persist the completed run as a shareable deep link."""
     st.query_params["ticker"] = params["symbol"]
     st.query_params["start"] = str(params["start_date"])

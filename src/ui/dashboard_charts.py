@@ -9,7 +9,7 @@ import plotly.graph_objects as go
 
 from ..constants import COLOR_FUTURE, COLOR_MA, COLOR_NAIVE, COLOR_PREDICTED
 from ..core.baselines import MOVING_AVERAGE, NAIVE
-from .chart_theme import DARK_THEME, PALETTE, layout
+from .chart_theme import DARK_THEME, layout
 
 if TYPE_CHECKING:
     from ..core.pipeline import AnalysisResult

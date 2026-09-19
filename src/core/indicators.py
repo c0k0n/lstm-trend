@@ -53,7 +53,9 @@ def bollinger_bands(
 def crossover_dates(fast: pd.Series, slow: pd.Series) -> pd.DataFrame:
     """Dates where the fast line crosses the slow line, with direction."""
     diff = fast - slow
-    sign = np.sign(diff)
+    # np.sign returns a bare ndarray; wrapping it keeps the index so the
+    # diff/fillna below stay in pandas-land.
+    sign = pd.Series(np.sign(diff), index=diff.index)
     change = sign.diff().fillna(0) != 0
     out = pd.DataFrame(
         {

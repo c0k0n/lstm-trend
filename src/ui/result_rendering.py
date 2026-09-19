@@ -7,9 +7,8 @@ from typing import TYPE_CHECKING
 
 import streamlit as st
 
-from ..constants import APP_TITLE
 from . import dashboard_charts as charts
-from .sidebar import SESSION_KEY, format_percent, get_analysis
+from .sidebar import SESSION_KEY, format_percent
 
 if TYPE_CHECKING:
     from ..core.pipeline import AnalysisResult

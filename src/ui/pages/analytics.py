@@ -1,6 +1,7 @@
 """Analytics page: deep exploratory analysis of a single ticker."""
 
 import datetime
+from functools import partial
 
 import pandas as pd
 import streamlit as st
@@ -16,6 +17,15 @@ from .. import analytics_charts as charts
 from ..sidebar import format_percent, load_data_cached
 
 TABS = ["📈 Overview", "📊 Returns", "📅 Seasonality", "🧭 Technicals", "🕳️ Risk"]
+
+
+def _fmt_pct(value: float, spec: str = ".2%") -> str:
+    """Percent-formatted value, or an em dash when a period has no data."""
+    return "—" if pd.isna(value) else format(value, spec)
+
+
+_fmt_whole_pct = partial(_fmt_pct, spec=".0%")
+_fmt_one_dp_pct = partial(_fmt_pct, spec=".1%")
 
 
 def _controls() -> tuple[str, datetime.date, datetime.date]:
@@ -164,10 +174,8 @@ def _seasonality(data: pd.DataFrame) -> None:
     col1, col2 = st.columns(2)
     with col1:
         months = seas_mod.month_effects(close)
-        months["mean"] = months["mean"].map(lambda v: "—" if pd.isna(v) else f"{v:.2%}")
-        months["hit_rate"] = months["hit_rate"].map(
-            lambda v: "—" if pd.isna(v) else f"{v:.0%}"
-        )
+        months["mean"] = months["mean"].map(_fmt_pct)
+        months["hit_rate"] = months["hit_rate"].map(_fmt_whole_pct)
         st.dataframe(
             months.rename(
                 columns={
@@ -248,10 +256,9 @@ def _risk(data: pd.DataFrame) -> None:
 
     events = risk.drawdown_events(close)
     if len(events):
-        events["Depth"] = events["Depth"].map(lambda v: f"{v:.1%}")
-        events["Start"] = events["Start"].map(lambda d: d.date())
-        events["Trough"] = events["Trough"].map(lambda d: d.date())
-        events["End"] = events["End"].map(lambda d: d.date())
+        events["Depth"] = events["Depth"].map(_fmt_one_dp_pct)
+        for column in ("Start", "Trough", "End"):
+            events[column] = pd.Series(events[column]).dt.date.to_numpy()
         page_size = 10
         pages = max(1, (len(events) + page_size - 1) // page_size)
         page = st.pagination(

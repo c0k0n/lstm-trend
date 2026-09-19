@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 300" width="760" height="300" role="img" aria-label="A forecast fan chart showing uncertainty widening with the prediction horizon">
+  <defs>
+    <style>
+      .bg    { fill: #0E1117; }
+      .grid  { stroke: #3D4452; stroke-width: 1; stroke-dasharray: 2 4; opacity: 0.5; }
+      .lbl   { fill: #F0F2F6; font: 600 13px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+      .sub   { fill: #9AA1AD; font: 400 11px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+      .tag   { fill: #0E1117; font: 700 11px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; text-anchor: middle; }
+      .hist  { stroke: #F0F2F6; stroke-width: 2.2; fill: none; stroke-linecap: round; }
+      .fc    { stroke: #FFA726; stroke-width: 2.2; fill: none; stroke-dasharray: 6 4; stroke-linecap: round; }
+      .edge  { stroke: #64B5F6; stroke-width: 1.4; fill: none; opacity: 0.75; }
+      .fan   { fill: #64B5F6; opacity: 0.16; }
+      .div   { stroke: #4FB477; stroke-width: 1.6; stroke-dasharray: 3 3; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="760" height="300" rx="12"/>
+
+  <text class="lbl" x="28" y="30">Why a 90-day forecast is worth less than a 5-day one</text>
+  <text class="sub" x="28" y="48">Each predicted day is fed back in as if it were real. Error compounds, so the cone widens.</text>
+
+  <!-- Grid -->
+  <line class="grid" x1="40" y1="80"  x2="720" y2="80"/>
+  <line class="grid" x1="40" y1="150" x2="720" y2="150"/>
+  <line class="grid" x1="40" y1="220" x2="720" y2="220"/>
+
+  <!-- Uncertainty fan -->
+  <path class="fan" d="M 380 158 Q 550 96 720 52 L 720 264 Q 550 220 380 158 Z" opacity="0">
+    <animate attributeName="opacity" from="0" to="0.16" dur="1.2s" begin="1.1s" fill="freeze"/>
+  </path>
+
+  <path class="edge" d="M 380 158 Q 550 96 720 52" pathLength="100" stroke-dasharray="100" stroke-dashoffset="100">
+    <animate attributeName="stroke-dashoffset" from="100" to="0" dur="1.2s" begin="0.9s" fill="freeze"/>
+  </path>
+  <path class="edge" d="M 380 158 Q 550 220 720 264" pathLength="100" stroke-dasharray="100" stroke-dashoffset="100">
+    <animate attributeName="stroke-dashoffset" from="100" to="0" dur="1.2s" begin="0.9s" fill="freeze"/>
+  </path>
+
+  <!-- History -->
+  <path class="hist" d="M 40 196 L 88 186 L 128 204 L 172 182 L 212 192 L 256 160 L 296 172 L 336 146 L 380 158" pathLength="100" stroke-dasharray="100" stroke-dashoffset="100">
+    <animate attributeName="stroke-dashoffset" from="100" to="0" dur="1.1s" begin="0.15s" fill="freeze"/>
+  </path>
+
+  <!-- Forecast centre line -->
+  <path class="fc" d="M 380 158 L 428 156 L 476 150 L 524 148 L 572 143 L 620 141 L 668 136 L 720 132" pathLength="100" stroke-dasharray="100" stroke-dashoffset="100">
+    <animate attributeName="stroke-dashoffset" from="100" to="0" dur="1.1s" begin="1.3s" fill="freeze"/>
+  </path>
+
+  <!-- Today divider -->
+  <line class="div" x1="380" y1="66" x2="380" y2="248"/>
+  <rect x="348" y="252" width="64" height="18" rx="9" fill="#4FB477"/>
+  <text class="tag" x="380" y="265">today</text>
+
+  <!-- Horizon ticks -->
+  <text class="sub" x="392" y="88">day 1 — tight</text>
+  <text class="sub" x="556" y="76">day 30</text>
+  <text class="sub" x="686" y="60">day 90 — wide</text>
+
+  <!-- Region labels -->
+  <rect x="40" y="278" width="9" height="9" rx="2" fill="#F0F2F6"/>
+  <text class="sub" x="53" y="286">observed closes</text>
+  <rect x="170" y="278" width="9" height="9" rx="2" fill="#FFA726"/>
+  <text class="sub" x="183" y="286">iterative forecast</text>
+  <rect x="300" y="278" width="9" height="9" rx="2" fill="#64B5F6"/>
+  <text class="sub" x="313" y="286">plausible range</text>
+
+  <text class="sub" x="470" y="286">Read the cone, not the line.</text>
+</svg>
