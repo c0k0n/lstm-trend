@@ -127,22 +127,22 @@ def _returns(data: pd.DataFrame) -> None:
     close = data["Close"]
     returns = ret_mod.daily_returns(close)
     moments = stats_mod.return_moments(returns)
-    adf = stats_mod.adf_summary(close)
+    unit_root = stats_mod.df_summary(close)
 
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Skewness", f"{moments['skewness']:.2f}")
     col2.metric("Kurtosis", f"{moments['kurtosis']:.2f}")
     col3.metric("Daily std dev", f"{moments['std']:.2%}")
-    col4.metric("ADF p-value", f"{adf['pvalue']:.4f}")
+    col4.metric("DF p-value", f"{unit_root['pvalue']:.4f}")
 
     verdict = (
         "p < 0.05 — the price series is **stationary**, so patterns are more likely "
         "to persist."
-        if adf["stationary"]
+        if unit_root["stationary"]
         else "p ≥ 0.05 — the price series looks **non-stationary** (typical for stocks): "
         "returns, not raw prices, are the safer thing to model."
     )
-    st.info(f"**Augmented Dickey–Fuller test:** {verdict}")
+    st.info(f"**Dickey–Fuller test:** {verdict}")
 
     col1, col2 = st.columns(2)
     with col1:

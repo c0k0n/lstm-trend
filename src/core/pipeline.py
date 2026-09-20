@@ -20,7 +20,7 @@ from .lstm_model import (
     train_model,
 )
 from .metrics import regression_metrics
-from .preprocessing import create_sequences, scale_data
+from .preprocessing import create_sequences, fit_scaler
 from ..constants import (
     DENSE_UNITS,
     EARLY_STOPPING_PATIENCE,
@@ -88,8 +88,16 @@ def run_analysis(
     close = data["Close"]
     close_np = close.to_numpy().reshape(-1, 1)
 
-    # --- Scale & sequence ---
-    scaled, scaler = scale_data(close_np)
+    # --- Split, then scale on the training window only ---
+    split_idx = int((len(close_np) - sequence_length) * TRAIN_TEST_SPLIT_RATIO)
+    # The training sequences reach this far into the price series; everything
+    # past it is reserve the scaler must not be allowed to see.
+    train_end = split_idx + sequence_length
+
+    scaler = fit_scaler(close_np[:train_end])
+    scaled = scaler.transform(close_np)
+
+    # --- Sequence ---
     seq_result = create_sequences(scaled, sequence_length)
     if seq_result is None:
         raise PipelineError(
@@ -98,8 +106,6 @@ def run_analysis(
         )
     x, y = seq_result
 
-    # --- Train / test split ---
-    split_idx = int(len(x) * TRAIN_TEST_SPLIT_RATIO)
     x_train, x_test = x[:split_idx], x[split_idx:]
     y_train, y_test = y[:split_idx], y[split_idx:]
     test_start_index = split_idx + sequence_length

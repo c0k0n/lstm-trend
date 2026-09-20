@@ -17,10 +17,10 @@ reading.
 ```mermaid
 flowchart TD
     Y["Yahoo Finance<br/><i>yfinance</i>"] --> DL["clean + flatten<br/>OHLCV"]
-    DL --> SC["scale closes to 0–1<br/><i>MinMaxScaler</i>"]
+    DL --> SP["split the timeline<br/>72 / 8 / 20"]
+    SP --> SC["fit MinMaxScaler on the train<br/>window only, then transform all"]
     SC --> SQ["sliding windows<br/>60 days in → day 61 out"]
-    SQ --> SP["split 72 / 8 / 20"]
-    SP --> TR["train LSTM<br/>early stopping, patience 10"]
+    SQ --> TR["train LSTM<br/>early stopping, patience 10"]
     TR --> EV["score on the unseen test window<br/>MSE · RMSE · MAE · MAPE · R²"]
     EV --> BS["score the same window twice more<br/>naive + 20-day moving average"]
     BS --> FC["forecast N business days<br/>one step at a time"]
@@ -44,7 +44,9 @@ Three pictures carry most of it.
 </p>
 
 The test window is data the model never trained on, which is the only reason the
-RMSE on the Findings page means anything.
+RMSE on the Findings page means anything. That holds for the scaling too: the
+MinMaxScaler is fit on the training window only, so the test window's high and
+low never shape the values the model learns from.
 
 ### The network
 
@@ -103,7 +105,7 @@ flowchart LR
 | pandas | 3.0.5 | Time series wrangling |
 | NumPy | 2.5.1 | Array maths, windowed sequence building |
 | scikit-learn | 1.9.0 | MinMaxScaler and the regression metrics |
-| scipy | 1.18.0 | KDE, Q–Q plots, moments, ADF test |
+| scipy | 1.18.0 | KDE, Q–Q plots, skew and kurtosis |
 | Plotly | 6.9.0 | Every interactive chart |
 | yfinance | 1.5.2 | Market data |
 | uv | latest | Environment and dependency management |
@@ -161,7 +163,7 @@ lstm-trend/
 │   ├── constants.py        # defaults, URLs, plot palette
 │   ├── core/               # pure analysis — no Streamlit
 │   │   ├── data_loader.py  # yfinance download, MultiIndex flattening
-│   │   ├── preprocessing.py# MinMaxScaler, sliding-window sequences
+│   │   ├── preprocessing.py# scaler fit on train only, sliding-window sequences
 │   │   ├── lstm_model.py   # build, train, evaluate, step-wise forecast
 │   │   ├── callbacks.py    # callable-based progress reporting
 │   │   ├── pipeline.py     # run_analysis(), AnalysisResult, PipelineError
@@ -170,7 +172,7 @@ lstm-trend/
 │   │   ├── returns.py      # returns, CAGR, trailing periods, 52w position
 │   │   ├── risk.py         # Sharpe, Sortino, drawdowns, VaR, CVaR
 │   │   ├── seasonality.py  # weekday effects, monthly heatmap, month effects
-│   │   ├── statistics.py   # skew/kurtosis, ADF test, autocorrelation
+│   │   ├── statistics.py   # skew/kurtosis, Dickey-Fuller test, autocorrelation
 │   │   └── indicators.py   # SMA, EMA, RSI, MACD, Bollinger, crossovers
 │   └── ui/                 # Streamlit rendering
 │       ├── chart_theme.py  # DARK_THEME, PALETTE, layout(), with_alpha()
@@ -291,6 +293,11 @@ from 5 to 90.
   on a choppy one. That is exactly why the baselines are shown beside it.
 - **Nothing is persisted.** Every run retrains from scratch, and the free tier
   is memory-limited, so long lookbacks get slow.
+- **The stationarity test is plain Dickey-Fuller, not augmented.** No lagged
+  differences, so residual serial correlation goes uncorrected. Its p-value and
+  critical values both come from a seeded 5,000-draw Monte Carlo null at the
+  actual sample size, so they agree with each other but carry simulation noise
+  of roughly ±0.03 on the critical values.
 
 ---
 

@@ -184,13 +184,13 @@ def render() -> None:
         )
         icon = "⚠️"
         verdict_badge = ("Baselines win this time", "orange")
-        with st.container(border=True):
-            st.markdown(f"### {icon} Verdict")
-            st.badge(verdict_badge[0], color=verdict_badge[1])
-            _render_verdict(verdict, result)
-            feedback = st.feedback("thumbs", key="verdict_feedback")
-            if feedback is not None:
-                st.session_state["verdict_feedback_value"] = feedback
+
+    with st.container(border=True):
+        st.markdown(f"### {icon} Verdict")
+        st.badge(verdict_badge[0], color=verdict_badge[1])
+        _render_verdict(verdict, result)
+        if st.feedback("thumbs", key="verdict_feedback") is not None:
+            st.caption("Thanks — this run stays local, nothing is sent anywhere.")
 
     with st.expander("How to read the numbers"):
         st.markdown(

@@ -4,11 +4,17 @@ import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 
 
-def scale_data(data: np.ndarray) -> tuple[np.ndarray, MinMaxScaler]:
-    """Scale a (n, 1) price array to [0, 1] and return the fitted scaler."""
+def fit_scaler(train_values: np.ndarray) -> MinMaxScaler:
+    """Fit a [0, 1] MinMaxScaler on the training window only.
+
+    Fitting on the whole series would let the test window's minimum and maximum
+    shape the values the model trains on — information it could not have had at
+    the time. Only the fit is held back; ``transform`` still runs over the full
+    series so the sequences stay on one continuous scale.
+    """
     scaler = MinMaxScaler(feature_range=(0, 1))
-    scaled = scaler.fit_transform(data)
-    return scaled, scaler
+    scaler.fit(train_values)
+    return scaler
 
 
 def create_sequences(
