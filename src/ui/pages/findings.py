@@ -189,8 +189,16 @@ def render() -> None:
         st.markdown(f"### {icon} Verdict")
         st.badge(verdict_badge[0], color=verdict_badge[1])
         _render_verdict(verdict, result)
-        if st.feedback("thumbs", key="verdict_feedback") is not None:
-            st.caption("Thanks — this run stays local, nothing is sent anywhere.")
+        reaction = st.feedback("thumbs", key="verdict_feedback")
+        if reaction is not None:
+            # st.feedback returns 0 for thumbs-down and 1 for thumbs-up.
+            if reaction == 1:
+                st.caption("Thanks — this run stays local, nothing is sent anywhere.")
+            else:
+                st.caption(
+                    "Fair enough — that is what the caveats below are for. One "
+                    "test window on one ticker is a small claim either way."
+                )
 
     with st.expander("How to read the numbers"):
         st.markdown(

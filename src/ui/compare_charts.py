@@ -5,7 +5,7 @@ from __future__ import annotations
 import pandas as pd
 import plotly.graph_objects as go
 
-from .chart_theme import PALETTE, cumulative_returns, layout
+from .chart_theme import PALETTE, layout
 
 
 def plot_normalized_prices(series: dict[str, pd.Series]) -> go.Figure:
@@ -30,10 +30,12 @@ def plot_normalized_prices(series: dict[str, pd.Series]) -> go.Figure:
 
 
 def plot_cumulative_comparison(series: dict[str, pd.Series]) -> go.Figure:
+    from ..core.returns import cumulative_returns_series
+
     fig = go.Figure()
     colors = PALETTE
     for i, (name, close) in enumerate(series.items()):
-        cum = cumulative_returns(close)
+        cum = cumulative_returns_series(close)
         fig.add_trace(
             go.Scatter(
                 x=cum.index,

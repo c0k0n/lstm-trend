@@ -110,7 +110,9 @@ flowchart LR
 | yfinance | 1.5.2 | Market data |
 | uv | latest | Environment and dependency management |
 
-Versions are pinned in `pyproject.toml` and locked in `uv.lock`.
+`pyproject.toml` sets a minimum version for each dependency; `uv.lock` pins the
+exact set that gets installed. Both are generated from the same list, so the
+table above and the lock never disagree.
 
 ---
 

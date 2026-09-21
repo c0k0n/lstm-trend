@@ -7,9 +7,9 @@ import streamlit as st
 
 from ...constants import (
     APP_TITLE,
-    DEFAULT_END_DATE,
     DEFAULT_START_DATE,
     SUGGESTED_SYMBOLS,
+    default_end_date,
 )
 from .. import compare_charts as charts
 from ..sidebar import load_data_cached
@@ -22,7 +22,7 @@ def _controls() -> tuple[list[str], datetime.date, datetime.date]:
     with row1_col2:
         start = st.date_input("Start", DEFAULT_START_DATE, key="compare_start")
     with row1_col3:
-        end = st.date_input("End", DEFAULT_END_DATE, key="compare_end")
+        end = st.date_input("End", default_end_date(), key="compare_end")
 
     if watch:
         symbols = watch

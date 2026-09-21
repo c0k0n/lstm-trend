@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    import pandas as pd
+from typing import Any
 
 from ..constants import (
     COLOR_ACTUAL,
@@ -42,12 +39,6 @@ def with_alpha(hex_color: str, alpha: float) -> str:
     g = int(hex_color[3:5], 16)
     b = int(hex_color[5:7], 16)
     return f"rgba({r},{g},{b},{alpha})"
-
-
-def cumulative_returns(close: "pd.Series") -> "pd.Series":
-    from ..core.returns import cumulative_returns_series
-
-    return cumulative_returns_series(close)
 
 
 def layout(

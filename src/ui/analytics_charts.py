@@ -12,9 +12,9 @@ from .chart_theme import DARK_THEME, MILLIS_PER_DAY, PALETTE, layout, with_alpha
 
 
 def plot_cumulative_returns(close: pd.Series, log_scale: bool = True) -> go.Figure:
-    from .chart_theme import cumulative_returns
+    from ..core.returns import cumulative_returns_series
 
-    cum = cumulative_returns(close)
+    cum = cumulative_returns_series(close)
     fig = go.Figure(
         go.Scatter(x=cum.index, y=cum.values, mode="lines", name="Cumulative return")
     )

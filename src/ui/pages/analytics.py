@@ -8,10 +8,10 @@ import streamlit as st
 
 from ...constants import (
     APP_TITLE,
-    DEFAULT_END_DATE,
     DEFAULT_START_DATE,
     DEFAULT_SYMBOL,
     SUGGESTED_SYMBOLS,
+    default_end_date,
 )
 from .. import analytics_charts as charts
 from ..sidebar import format_percent, load_data_cached
@@ -52,7 +52,7 @@ def _controls() -> tuple[str, datetime.date, datetime.date]:
     with col2:
         start = st.date_input("Start", DEFAULT_START_DATE, key="analytics_start")
     with col3:
-        end = st.date_input("End", DEFAULT_END_DATE, key="analytics_end")
+        end = st.date_input("End", default_end_date(), key="analytics_end")
     return symbol, start, end
 
 

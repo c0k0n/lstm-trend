@@ -11,13 +11,13 @@ import streamlit as st
 
 from ..constants import (
     DEFAULT_BATCH_SIZE,
-    DEFAULT_END_DATE,
     DEFAULT_EPOCHS,
     DEFAULT_FUTURE_STEPS,
     DEFAULT_SEQUENCE_LENGTH,
     DEFAULT_START_DATE,
     DEFAULT_SYMBOL,
     SUGGESTED_SYMBOLS,
+    default_end_date,
 )
 from ..core.data_loader import download_stock_data
 from ..core.pipeline import AnalysisResult, PipelineError, run_analysis
@@ -111,7 +111,7 @@ def render_sidebar_config() -> dict[str, Any]:
     symbol = _render_symbol_picker()
     col1, col2 = st.sidebar.columns(2)
     start_date = col1.date_input("Start", DEFAULT_START_DATE, key="start_date")
-    end_date = col2.date_input("End", DEFAULT_END_DATE, key="end_date")
+    end_date = col2.date_input("End", default_end_date(), key="end_date")
 
     return {
         "symbol": symbol,

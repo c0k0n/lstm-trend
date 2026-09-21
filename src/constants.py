@@ -10,7 +10,18 @@ LIVE_APP_URL: Final[str] = "https://lstm-trend.streamlit.app"
 # UI defaults
 DEFAULT_SYMBOL: Final[str] = "AAPL"
 DEFAULT_START_DATE: Final[datetime.date] = datetime.date(2020, 1, 1)
-DEFAULT_END_DATE: Final[datetime.date] = datetime.date.today()
+
+
+def default_end_date() -> datetime.date:
+    """Today, read at call time — not a constant frozen at process start.
+
+    A module-level ``datetime.date.today()`` would be evaluated once when the
+    server imports this file, so a long-lived Streamlit process would keep
+    handing every new session its start-up date rather than today's.
+    """
+    return datetime.date.today()
+
+
 DEFAULT_SEQUENCE_LENGTH: Final[int] = 60
 DEFAULT_FUTURE_STEPS: Final[int] = 15
 DEFAULT_EPOCHS: Final[int] = 50
