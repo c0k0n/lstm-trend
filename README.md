@@ -527,7 +527,7 @@ from 5 to 90.
 
 ## Tests
 
-134 tests across 10 files, and the choice of *what* to test is the point: this
+140 tests across 11 files, and the choice of *what* to test is the point: this
 project's worst failure modes were silent, so the suite is built around them
 rather than around coverage.
 
@@ -543,8 +543,9 @@ rather than around coverage.
 | `test_cross_sectional.py` | 10 | a ranking that cannot beat a random pick |
 | `test_backtest.py` | 8 | a model arm that can see context it should not |
 | `test_ui_logic.py` | 6 | the band cache serving a range from the wrong dataset |
+| `test_docs_diagrams.py` | 6 | **a figure that renders but lies**: an arrow into the wrong box, one that stops in mid-air, ink invisible on a light theme |
 
-Two are worth calling out:
+Three are worth calling out:
 
 **`test_documented_numbers.py` recomputes this README.** Every skill, win count
 and p-value in the tables below is derived from the raw per-window CSVs, and the
@@ -556,6 +557,15 @@ recomputes is a number that rots.
 is cached per analysis; the key once omitted the date range, so a second run
 over different history drew the *first* run's range over its own forecast. The
 test pins every field the key must depend on.
+
+**`test_docs_diagrams.py` reads the figures in `docs/` as geometry.** An SVG can
+be perfectly valid and still be wrong: the cell diagram once drew the input
+gate's arrow into the forget gate's product box, left `i(t) × g(t)` fed by only
+half its inputs, and ended one arrow inside the box it left. All of it rendered
+without complaint. The test walks every connector in the flow diagrams and fails
+if one crosses a box or stops short of one, alongside checks for opaque
+backgrounds (so the ink survives GitHub's light theme), a minimum legible type
+size, and marker definitions that are used.
 
 **Not covered by pytest:** the UI is verified by booting the app and driving it
 in a browser — every page rendered, every tab opened, a full analysis and a
