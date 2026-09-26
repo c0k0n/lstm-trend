@@ -12,6 +12,7 @@ import streamlit as st
 
 from ...core.baselines import MOVING_AVERAGE, NAIVE
 from ...core.metrics import METRIC_NAMES
+from ...core.skill import skill_from_mae
 from ...constants import APP_TITLE
 from .. import dashboard_charts as charts
 from ..sidebar import get_analysis
@@ -25,6 +26,7 @@ METRIC_LABELS = {
     "mae": "MAE",
     "mape": "MAPE",
     "r2": "R²",
+    "skill": "Skill vs naive",
 }
 
 
@@ -68,11 +70,20 @@ def _render_verdict(text: str, result: AnalysisResult) -> None:
 
 
 def _metrics_table(result: AnalysisResult) -> pd.DataFrame:
-    """Build a DataFrame of metrics for LSTM and baseline methods."""
+    """Build a DataFrame of metrics for LSTM and baseline methods.
+
+    Adds skill against the naive baseline — the same yardstick the walk-forward
+    test uses, so this page and the Evidence page can be read side by side
+    rather than contradicting each other.
+    """
     rows = [{"Method": "LSTM", **result.lstm_metrics}]
     for name, metrics in result.baselines.items():
         rows.append({"Method": name, **metrics})
-    return pd.DataFrame(rows)
+
+    frame = pd.DataFrame(rows)
+    naive_mae = result.baselines[NAIVE]["mae"]
+    frame["skill"] = [skill_from_mae(mae, naive_mae) for mae in frame["mae"]]
+    return frame
 
 
 def _format_metric(value: float, metric: str) -> str:
@@ -99,6 +110,12 @@ def render() -> None:
         "The empirical verdict: how the LSTM's test-window errors compare "
         "with 'repeat yesterday' and a 20-day moving average — on the last "
         "analysis you ran."
+    )
+    st.warning(
+        "This is **one** test window. One window cannot separate skill from "
+        "luck, however good the numbers look. For a verdict that can, run the "
+        "walk-forward test on the **Evidence** page.",
+        icon="⚠️",
     )
 
     result = get_analysis()
@@ -152,8 +169,16 @@ def render() -> None:
         display[METRIC_LABELS[metric]] = display[METRIC_LABELS[metric]].apply(
             _metric_formatter(metric)
         )
+    display[METRIC_LABELS["skill"]] = display[METRIC_LABELS["skill"]].map(
+        lambda value: f"{value:+.1%}"
+    )
 
     st.dataframe(display, hide_index=True, width="stretch")
+    st.caption(
+        "**Skill vs naive** is `1 − MAE / MAE(naive)` — positive means the "
+        "model beat repeating yesterday's price. It is the number the Evidence "
+        "page reports across many windows."
+    )
 
     st.plotly_chart(charts.plot_metric_bars(result), width="stretch")
     st.plotly_chart(charts.plot_baseline_comparison(result), width="stretch")
@@ -205,14 +230,19 @@ def render() -> None:
             """
             | Metric | Lower is better? | What it actually tells you |
             |---|---|---|
-            | **RMSE** | Yes | Average error in dollars, with big misses punished. The headline number for this comparison. |
+            | **Skill vs naive** | Higher | How much smaller the error is than repeating yesterday's price. The only number here you can compare across tickers and windows. |
+            | **RMSE** | Yes | Average error in dollars, with big misses punished. |
             | **MAE** | Yes | Average absolute error in dollars — easier to feel, ignores outliers. |
-            | **MAPE** | Yes | The error as a percentage of price, so different stocks can be compared. |
-            | **R²** | — | How much of the price variance the model explains. High on trending stocks, low on choppy ones. |
+            | **MAPE** | Yes | The error as a percentage of price — but it is asymmetric, unstable near zero, and undefined there. Treat it as decoration. |
+            | **R²** | — | How much price variance the model explains. Flattered by any trend, so a high value here means far less than it looks. |
 
-            RMSE is the comparison metric because it is sensitive to the same
-            kind of error you care about in a forecast: consistently missing
-            the next move by a lot.
+            Skill is the number to read first. Dollars and percentages only
+            describe this one ticker over this one window; skill is the same
+            yardstick the Evidence page uses across hundreds of windows.
+
+            Every figure above comes from a single test window. A model can
+            lead this table and still have no edge — that is what the
+            walk-forward test is for.
             """
         )
 

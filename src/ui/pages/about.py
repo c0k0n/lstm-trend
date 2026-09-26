@@ -24,9 +24,13 @@ def render() -> None:
         could that be wrapped up in an app anyone can use without touching
         code?
 
-        The answer the data keeps giving: *sometimes, and with caveats*. The
-        LSTM regularly beats 'repeat yesterday', but not always — and that
-        honest ambiguity is exactly what makes it an interesting project.
+        The answer the data keeps giving is: **no, not on daily stock prices.**
+        Measured over 20 tickers and 300 walk-forward windows, no model beat
+        'repeat yesterday' — the upgraded LSTM scored −15.0% against it, winning
+        only 117 of 300 windows and significantly *worse* than doing nothing
+        (p = 0.00017). Reporting that plainly is the most useful thing this
+        project does, so the app is built to measure and show it rather than to
+        argue around it.
 
         The project has kept growing since then:
 
@@ -34,9 +38,12 @@ def render() -> None:
           (same model code, proper GPU support),
         - the app grew into a **multipage tool**: a Dashboard for forecasting,
           an Analytics page for deep exploratory analysis, a Compare page for
-          multi-ticker work, an empirical Findings page, and this page,
+          multi-ticker work, an Evidence page that runs the walk-forward test
+          across many windows, a Methodology page, and this one,
         - the analysis is grounded in **baselines** — every LSTM result is
           shown next to 'repeat yesterday' and a moving average,
+        - the part that *does* work is **calibrated range**: a 90% target band
+          achieves about 90% realised coverage, which is the honest deliverable,
         - everything runs on **uv** with locked dependencies.
         """
     )
@@ -46,10 +53,11 @@ def render() -> None:
         """
         | Page | What you'll find there |
         |---|---|
-        | **📈 Dashboard** | Run the pipeline: data → train → evaluate → forecast. Market snapshot, training curves, forecast table with CSV download. |
+        | **📈 Dashboard** | Run the pipeline: data → train → evaluate → forecast. Market snapshot, training curves, a calibrated forecast range with realised coverage, forecast table with CSV download. |
         | **📊 Analytics** | Deep EDA of any ticker: returns, risk metrics (Sharpe, drawdowns, VaR), seasonality, stationarity, technical indicators, volume analysis. |
         | **⚖️ Compare** | Several tickers side by side: normalized prices, correlations, drawdowns, risk-vs-return scatter, metrics table. |
-        | **🔬 Findings** | The honest verdict: LSTM vs naive vs moving average on the last analysis, with test-window context. |
+        | **🔬 Findings** | One test window, scored against the baselines, with a warning that one window cannot separate skill from luck. |
+        | **🧪 Evidence** | The verdict that can be trusted: a walk-forward test across many windows and tickers, plus the forward record of forecasts written down in advance. |
         | **📚 Methodology** | The full technical story: pipeline, architecture, hyperparameters, design trade-offs, references. |
         | **🎓 About** | You are here. |
         """
@@ -64,17 +72,24 @@ def render() -> None:
         )
     with st.expander("Why an LSTM, and not a Transformer or XGBoost?"):
         st.markdown(
-            "An LSTM is the classic recurrent architecture for sequences, it "
-            "trains fast on tiny data, and it keeps the project readable for "
-            "an examiner. Transformers would overfit a few thousand prices; "
-            "the trade-offs table on the Methodology page says more."
+            "Two separate questions. The LSTM stays because it is the model "
+            "under test — it is what the project is about, and it trains in "
+            "seconds on a few thousand prices where a Transformer would "
+            "overfit. But the app does not ask you to take its word for it: "
+            "the **Evidence** page pits it against LightGBM on every walk-"
+            "forward window, and LightGBM currently wins. The honest reading "
+            "is that the LSTM is the *subject*, and the baselines are the "
+            "control group that keeps it honest."
         )
     with st.expander("Why does the app retrain on every run?"):
         st.markdown(
-            "Nothing is persisted between sessions — every run downloads "
-            "fresh data and trains from scratch. That keeps the app simple "
-            "and honest (no stale model), at the cost of a wait each time. "
-            "Saving models is on the ideas list."
+            "No trained model is persisted between sessions — every run "
+            "downloads fresh data and trains from scratch. That keeps the app "
+            "simple and honest (no stale weights) at the cost of a wait each "
+            "time. What *is* kept is the forecast: every run appends its "
+            "predictions to a local SQLite journal with the price at the "
+            "moment it was made, so they can be graded later against what "
+            "actually happened."
         )
     with st.expander("Why show baselines? Doesn't that make the LSTM look bad?"):
         st.markdown(
@@ -97,6 +112,7 @@ def render() -> None:
                 "App framework",
                 "Deep learning",
                 "Backend",
+                "Challenger model",
                 "Data",
                 "Analytics",
                 "Charts",
@@ -105,9 +121,10 @@ def render() -> None:
             "Choice": [
                 "Streamlit 1.61 (multipage, st.navigation)",
                 "Keras 3 (LSTM)",
-                "PyTorch (torch.cuda optional)",
+                "PyTorch 2.14 (torch.cuda optional)",
+                "LightGBM 4.7 (walk-forward challenger)",
                 "Yahoo Finance via yfinance + pandas",
-                "scipy (distributions, skew and kurtosis)",
+                "scikit-learn (scaling, metrics), scipy (distributions)",
                 "Plotly (interactive theme-aware charts)",
                 "uv + uv.lock (Python 3.13)",
             ],

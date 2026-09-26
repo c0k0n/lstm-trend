@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import keras
+import numpy as np
 import pandas as pd
 
 from .baselines import baseline_forecasts, evaluate_baselines
@@ -15,12 +16,17 @@ from .callbacks import ProgressReporterCallback
 from .data_loader import download_stock_data
 from .lstm_model import (
     create_lstm_model,
-    make_future_predictions,
-    predict_on_test,
+    forecast_path,
+    predict_test_prices,
     train_model,
 )
 from .metrics import regression_metrics
-from .preprocessing import create_sequences, fit_scaler
+from .preprocessing import (
+    build_return_windows,
+    calendar_frame,
+    fit_scaler,
+    log_returns,
+)
 from ..constants import (
     DENSE_UNITS,
     EARLY_STOPPING_PATIENCE,
@@ -86,19 +92,25 @@ def run_analysis(
         )
 
     close = data["Close"]
-    close_np = close.to_numpy().reshape(-1, 1)
+    # Returns, not levels. The first row has no prior close, so the aligned
+    # close series starts one day later than the price series.
+    returns = log_returns(close).dropna()
+    close_aligned = close.iloc[1:]
 
     # --- Split, then scale on the training window only ---
-    split_idx = int((len(close_np) - sequence_length) * TRAIN_TEST_SPLIT_RATIO)
-    # The training sequences reach this far into the price series; everything
+    return_values = returns.to_numpy().reshape(-1, 1)
+    split_idx = int((len(return_values) - sequence_length) * TRAIN_TEST_SPLIT_RATIO)
+    # The training sequences reach this far into the return series; everything
     # past it is reserve the scaler must not be allowed to see.
     train_end = split_idx + sequence_length
 
-    scaler = fit_scaler(close_np[:train_end])
-    scaled = scaler.transform(close_np)
+    scaler = fit_scaler(return_values[:train_end])
+    matrix = np.column_stack(
+        [scaler.transform(return_values), calendar_frame(returns.index)]
+    )
 
     # --- Sequence ---
-    seq_result = create_sequences(scaled, sequence_length)
+    seq_result = build_return_windows(matrix, sequence_length)
     if seq_result is None:
         raise PipelineError(
             f"Not enough data to create sequences for **{symbol}** "
@@ -108,11 +120,18 @@ def run_analysis(
 
     x_train, x_test = x[:split_idx], x[split_idx:]
     y_train, y_test = y[:split_idx], y[split_idx:]
-    test_start_index = split_idx + sequence_length
+
+    # Window j predicts the return at position sequence_length + j, so its
+    # starting price is the close on the day before that.
+    aligned = close_aligned.to_numpy()
+    origins = aligned[sequence_length - 1 : sequence_length - 1 + len(y)]
+    actuals = aligned[sequence_length : sequence_length + len(y)]
+    # +1 because the return series sits one row behind the price series.
+    test_start_index = split_idx + sequence_length + 1
 
     # --- Model ---
     model = create_lstm_model(
-        input_shape=(sequence_length, 1),
+        input_shape=(sequence_length, matrix.shape[1]),
         units=LSTM_UNITS,
         dropout_rate=LSTM_DROPOUT,
         dense_units=DENSE_UNITS,
@@ -131,7 +150,10 @@ def run_analysis(
     )
 
     # --- Evaluate on test ---
-    test_predictions = predict_on_test(model, x_test, y_test, scaler)
+    predicted = predict_test_prices(model, x_test, origins[split_idx:], scaler)
+    test_predictions = pd.DataFrame(
+        {"actual": actuals[split_idx:], "predicted": predicted}
+    )
     lstm_metrics = regression_metrics(
         test_predictions["actual"].to_numpy(),
         test_predictions["predicted"].to_numpy(),
@@ -144,13 +166,14 @@ def run_analysis(
     )
 
     # --- Future forecast ---
-    future = make_future_predictions(
+    future = forecast_path(
         model,
-        scaled,
-        scaler,
+        matrix,
         sequence_length,
         future_steps,
+        float(close.iloc[-1]),
         close.index[-1],
+        scaler,
     )
 
     # --- Forecast with day-over-day change ---

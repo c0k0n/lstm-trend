@@ -16,8 +16,31 @@ from ..sidebar import load_data_cached
 
 
 def _controls() -> tuple[list[str], datetime.date, datetime.date]:
+    """Ticker selection and date range, laid out as one aligned row.
+
+    The three controls sit in a row, so they have to start at the same
+    vertical position. Two of them are labelled widgets — Streamlit draws the
+    label *above* the input box — and the watchlist is an expander, which has
+    no label and therefore sat ~29px higher than the two date boxes beside it.
+    A spacer of the same height as a widget label puts all three on one line.
+
+    The number is measured, not guessed: the date labels measure 24px tall
+    with a 5px gap below them, and that is exactly the 29px the expander was
+    short by.
+    """
     row1_col1, row1_col2, row1_col3 = st.columns(3)
     with row1_col1:
+        # Push the expander down to meet the date boxes.
+        #
+        # The two date inputs are labelled widgets, so Streamlit reserves 29px
+        # above the input box for the label and a gap. The expander has no
+        # label and started at the top of its column instead, 29px high.
+        #
+        # A plain `st.empty()` does not work: it renders as a zero-height
+        # placeholder that occupies no vertical space, so the expander did not
+        # move (measured before and after — identical 308px top). A markdown
+        # element is needed instead, because it *does* take up room.
+        st.markdown('<div style="height:29px"></div>', unsafe_allow_html=True)
         watch = _watchlist()
     with row1_col2:
         start = st.date_input("Start", DEFAULT_START_DATE, key="compare_start")

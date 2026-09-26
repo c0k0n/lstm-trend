@@ -13,7 +13,15 @@ import streamlit as st
 
 def get_pages() -> dict[str, st.Page]:
     """The canonical page objects, keyed by their ``url_path``."""
-    from . import about, analytics, compare, dashboard, findings, methodology
+    from . import (
+        about,
+        analytics,
+        compare,
+        dashboard,
+        evidence,
+        findings,
+        methodology,
+    )
 
     return {
         "dashboard": st.Page(
@@ -31,6 +39,9 @@ def get_pages() -> dict[str, st.Page]:
         ),
         "findings": st.Page(
             findings.render, title="Findings", icon="🔬", url_path="findings"
+        ),
+        "evidence": st.Page(
+            evidence.render, title="Evidence", icon="🧪", url_path="evidence"
         ),
         "methodology": st.Page(
             methodology.render, title="Methodology", icon="📚", url_path="methodology"

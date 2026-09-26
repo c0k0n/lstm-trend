@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 500" width="1040" height="500" role="img" aria-label="Inside one LSTM cell: one input bus, four parallel branches, a state line" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif">
+<rect width="1040" height="500" fill="#0E1117"/>
+<title>Inside one LSTM cell</title>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#8A93A5"/></marker><marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#4FB477"/></marker><marker id="o" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#CE93D8"/></marker></defs>
+<text x="28" y="32" font-size="18" fill="#EDF0F6" text-anchor="start" font-weight="700">Inside one LSTM cell</text>
+<text x="28" y="54" font-size="12.5" fill="#B4BCCB" text-anchor="start" font-weight="400">One time step. The four branches are computed in parallel from the same inputs — nothing feeds into anything else.</text>
+<rect x="28" y="150" width="128" height="46" rx="7" fill="#161B24" stroke="#64B5F6" stroke-width="1.8"/><text x="92.0" y="168.0" font-size="12.5" fill="#EDF0F6" text-anchor="middle" font-weight="600">[h-1, x]</text><text x="92.0" y="187.0" font-size="11.5" fill="#B4BCCB" text-anchor="middle" font-weight="400">previous state, today</text>
+<line x1="156" y1="173" x2="186" y2="173" stroke="#64B5F6" stroke-width="1.6" marker-end="url(#a)"/>
+<line x1="186" y1="173" x2="186" y2="119" stroke="#8A93A5" stroke-width="1.2" marker-end="url(#a)"/>
+<line x1="186" y1="119" x2="214" y2="119" stroke="#64B5F6" stroke-width="1.5" marker-end="url(#a)"/>
+<rect x="214" y="96" width="178" height="46" rx="7" fill="#161B24" stroke="#64B5F6" stroke-width="1.7"/><text x="303.0" y="114.0" font-size="12.5" fill="#EDF0F6" text-anchor="middle" font-weight="600">input gate  i(t)</text><text x="303.0" y="133.0" font-size="11.5" fill="#B4BCCB" text-anchor="middle" font-weight="400">fraction of candidate accepted</text>
+<line x1="392" y1="119" x2="432" y2="119" stroke="#64B5F6" stroke-width="1.5" marker-end="url(#a)"/>
+<line x1="186" y1="173" x2="186" y2="199" stroke="#8A93A5" stroke-width="1.2" marker-end="url(#a)"/>
+<line x1="186" y1="199" x2="214" y2="199" stroke="#EF5350" stroke-width="1.5" marker-end="url(#a)"/>
+<rect x="214" y="176" width="178" height="46" rx="7" fill="#161B24" stroke="#EF5350" stroke-width="1.7"/><text x="303.0" y="194.0" font-size="12.5" fill="#EDF0F6" text-anchor="middle" font-weight="600">forget gate  f(t)</text><text x="303.0" y="213.0" font-size="11.5" fill="#B4BCCB" text-anchor="middle" font-weight="400">fraction of c-1 retained</text>
+<line x1="392" y1="199" x2="432" y2="199" stroke="#EF5350" stroke-width="1.5" marker-end="url(#a)"/>
+<line x1="186" y1="173" x2="186" y2="279" stroke="#8A93A5" stroke-width="1.2" marker-end="url(#a)"/>
+<line x1="186" y1="279" x2="214" y2="279" stroke="#FFA726" stroke-width="1.5" marker-end="url(#a)"/>
+<rect x="214" y="256" width="178" height="46" rx="7" fill="#161B24" stroke="#FFA726" stroke-width="1.7"/><text x="303.0" y="274.0" font-size="12.5" fill="#EDF0F6" text-anchor="middle" font-weight="600">candidate  g(t)</text><text x="303.0" y="293.0" font-size="11.5" fill="#B4BCCB" text-anchor="middle" font-weight="400">what could be written, tanh</text>
+<line x1="392" y1="279" x2="432" y2="279" stroke="#FFA726" stroke-width="1.5" marker-end="url(#a)"/>
+<line x1="186" y1="173" x2="186" y2="359" stroke="#8A93A5" stroke-width="1.2" marker-end="url(#a)"/>
+<line x1="186" y1="359" x2="214" y2="359" stroke="#CE93D8" stroke-width="1.5" marker-end="url(#a)"/>
+<rect x="214" y="336" width="178" height="46" rx="7" fill="#161B24" stroke="#CE93D8" stroke-width="1.7"/><text x="303.0" y="354.0" font-size="12.5" fill="#EDF0F6" text-anchor="middle" font-weight="600">output gate  o(t)</text><text x="303.0" y="373.0" font-size="11.5" fill="#B4BCCB" text-anchor="middle" font-weight="400">fraction of tanh(c) exposed</text>
+<line x1="392" y1="359" x2="432" y2="359" stroke="#CE93D8" stroke-width="1.5" marker-end="url(#a)"/>
+<text x="432" y="74" font-size="12" fill="#EDF0F6" text-anchor="start" font-weight="700">state update</text>
+<text x="300" y="166" font-size="10.5" fill="#8A93A5" text-anchor="start" font-weight="400">carried from last step</text>
+<circle cx="300" cy="176" r="4.5" fill="#EF5350"/>
+<text x="308" y="181" font-size="12.5" fill="#EF5350" text-anchor="start" font-weight="600">c(t-1)</text>
+<line x1="300" y1="176" x2="404" y2="176" stroke="#EF5350" stroke-width="1.3" stroke-dasharray="5 4"/>
+<line x1="404" y1="176" x2="432" y2="116" stroke="#EF5350" stroke-width="1.3" marker-end="url(#a)"/>
+<rect x="432" y="96" width="180" height="40" rx="7" fill="#161B24" stroke="#EF5350" stroke-width="1.6"/><text x="522.0" y="111.0" font-size="12.5" fill="#EDF0F6" text-anchor="middle" font-weight="600">f(t) * c(t-1)</text><text x="522.0" y="130.0" font-size="11" fill="#B4BCCB" text-anchor="middle" font-weight="400">old state, retained</text>
+<line x1="432" y1="279" x2="452" y2="279" stroke="#FFA726" stroke-width="1.4" marker-end="url(#a)"/>
+<rect x="452" y="259" width="160" height="40" rx="7" fill="#161B24" stroke="#FFA726" stroke-width="1.6"/><text x="532.0" y="274.0" font-size="12.5" fill="#EDF0F6" text-anchor="middle" font-weight="600">i(t) * g(t)</text><text x="532.0" y="293.0" font-size="11" fill="#B4BCCB" text-anchor="middle" font-weight="400">new content, accepted</text>
+<line x1="522" y1="116" x2="560" y2="116" stroke="#EF5350" stroke-width="1.4" marker-end="url(#a)"/>
+<line x1="612" y1="279" x2="578" y2="222" stroke="#FFA726" stroke-width="1.4" marker-end="url(#a)"/>
+<circle cx="578" cy="206" r="12" fill="#161B24" stroke="#EDF0F6" stroke-width="1.5"/>
+<text x="578" y="212" font-size="15" fill="#EDF0F6" text-anchor="middle" font-weight="700">+</text>
+<text x="592" y="190" font-size="10.5" fill="#8A93A5" text-anchor="start" font-weight="400">add</text>
+<line x1="590" y1="206" x2="632" y2="206" stroke="#4FB477" stroke-width="1.7" marker-end="url(#g)"/>
+<rect x="632" y="186" width="104" height="40" rx="7" fill="#161B24" stroke="#4FB477" stroke-width="1.9"/><text x="684.0" y="201.0" font-size="14" fill="#EDF0F6" text-anchor="middle" font-weight="600">c(t)</text><text x="684.0" y="220.0" font-size="11" fill="#B4BCCB" text-anchor="middle" font-weight="400">new state</text>
+<line x1="736" y1="206" x2="792" y2="206" stroke="#4FB477" stroke-width="1.7" marker-end="url(#g)"/>
+<text x="748" y="210" font-size="11" fill="#4FB477" text-anchor="start" font-weight="400">to next step</text>
+<path d="M 684 226 L 684 458 L 232 458 L 232 176" stroke="#4FB477" stroke-width="1.6" fill="none" stroke-dasharray="6 4" marker-end="url(#g)"/>
+<text x="440" y="474" font-size="11" fill="#4FB477" text-anchor="middle" font-weight="400">c(t) becomes c(t-1) next time step</text>
+<line x1="432" y1="359" x2="470" y2="359" stroke="#CE93D8" stroke-width="1.5" marker-end="url(#a)"/>
+<rect x="470" y="339" width="160" height="40" rx="7" fill="#161B24" stroke="#CE93D8" stroke-width="1.6"/><text x="550.0" y="354.0" font-size="12.5" fill="#EDF0F6" text-anchor="middle" font-weight="600">o(t) * tanh(c)</text><text x="550.0" y="373.0" font-size="11" fill="#B4BCCB" text-anchor="middle" font-weight="400">what is exposed</text>
+<line x1="630" y1="359" x2="664" y2="359" stroke="#CE93D8" stroke-width="1.5" marker-end="url(#o)"/>
+<rect x="664" y="339" width="74" height="40" rx="7" fill="#161B24" stroke="#CE93D8" stroke-width="1.8"/><text x="701.0" y="354.0" font-size="14" fill="#EDF0F6" text-anchor="middle" font-weight="600">h(t)</text><text x="701.0" y="373.0" font-size="11" fill="#B4BCCB" text-anchor="middle" font-weight="400">output</text>
+<text x="762" y="74" font-size="12.5" fill="#EDF0F6" text-anchor="start" font-weight="700">in full</text>
+<text x="762" y="104" font-size="12" fill="#64B5F6" text-anchor="start" font-weight="700">i(t)</text>
+<text x="802" y="104" font-size="11" fill="#EDF0F6" text-anchor="start" font-weight="400">s(Wi.[h-1,x]+bi)</text>
+<text x="762" y="128" font-size="12" fill="#EF5350" text-anchor="start" font-weight="700">f(t)</text>
+<text x="802" y="128" font-size="11" fill="#EDF0F6" text-anchor="start" font-weight="400">s(Wf.[h-1,x]+bf)</text>
+<text x="762" y="152" font-size="12" fill="#FFA726" text-anchor="start" font-weight="700">g(t)</text>
+<text x="802" y="152" font-size="11" fill="#EDF0F6" text-anchor="start" font-weight="400">tanh(Wg.[h-1,x]+bg)</text>
+<text x="762" y="176" font-size="12" fill="#4FB477" text-anchor="start" font-weight="700">c(t)</text>
+<text x="802" y="176" font-size="11" fill="#EDF0F6" text-anchor="start" font-weight="400">f*c-1 + i*g</text>
+<text x="762" y="200" font-size="12" fill="#CE93D8" text-anchor="start" font-weight="700">o(t)</text>
+<text x="802" y="200" font-size="11" fill="#EDF0F6" text-anchor="start" font-weight="400">s(Wo.[h-1,x]+bo)</text>
+<text x="762" y="224" font-size="12" fill="#EDF0F6" text-anchor="start" font-weight="700">h(t)</text>
+<text x="802" y="224" font-size="11" fill="#EDF0F6" text-anchor="start" font-weight="400">o * tanh(c)</text>
+<line x1="740" y1="86" x2="740" y2="272" stroke="#2A3140" stroke-width="1"/>
+<text x="762" y="266" font-size="10.5" fill="#8A93A5" text-anchor="start" font-weight="400">s = logistic, 0 to 1</text>
+<text x="762" y="283" font-size="10.5" fill="#8A93A5" text-anchor="start" font-weight="400">* = element-wise multiply</text>
+<text x="762" y="304" font-size="10.5" fill="#8A93A5" text-anchor="start" font-weight="400">three gates and a candidate:</text>
+<text x="762" y="320" font-size="10.5" fill="#8A93A5" text-anchor="start" font-weight="400">g proposes, it does not gate</text>
+</svg>

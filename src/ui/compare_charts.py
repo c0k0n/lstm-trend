@@ -8,45 +8,53 @@ import plotly.graph_objects as go
 from .chart_theme import PALETTE, layout
 
 
+def _one_line_per_ticker(
+    series: dict[str, pd.Series],
+    transform,
+    title: str,
+    yaxis_title: str,
+    height: int = 420,
+) -> go.Figure:
+    """One line per ticker, same colour assignment, same legend placement.
+
+    Three of the charts on this page differ only in what they plot, and each
+    carried its own copy of the loop — including the palette cycling, which is
+    what makes the same ticker the same colour across all three. That is a
+    property a reader relies on, so it lives in one place now.
+    """
+    fig = go.Figure()
+    for i, (name, close) in enumerate(series.items()):
+        plotted = transform(close)
+        fig.add_trace(
+            go.Scatter(
+                x=plotted.index,
+                y=plotted.values,
+                mode="lines",
+                name=name,
+                line=dict(color=PALETTE[i % len(PALETTE)]),
+            )
+        )
+    fig.update_layout(**layout(title, yaxis_title=yaxis_title, height=height))
+    return fig
+
+
 def plot_normalized_prices(series: dict[str, pd.Series]) -> go.Figure:
     from ..core.returns import normalize_series
 
-    fig = go.Figure()
-    colors = PALETTE
-    for i, (name, close) in enumerate(series.items()):
-        fig.add_trace(
-            go.Scatter(
-                x=close.index,
-                y=normalize_series(close).values,
-                mode="lines",
-                name=name,
-                line=dict(color=colors[i % len(colors)]),
-            )
-        )
-    fig.update_layout(
-        **layout("Normalized price (start = 100)", yaxis_title="Indexed price")
+    return _one_line_per_ticker(
+        series,
+        normalize_series,
+        "Normalized price (start = 100)",
+        "Indexed price",
     )
-    return fig
 
 
 def plot_cumulative_comparison(series: dict[str, pd.Series]) -> go.Figure:
     from ..core.returns import cumulative_returns_series
 
-    fig = go.Figure()
-    colors = PALETTE
-    for i, (name, close) in enumerate(series.items()):
-        cum = cumulative_returns_series(close)
-        fig.add_trace(
-            go.Scatter(
-                x=cum.index,
-                y=cum.values,
-                mode="lines",
-                name=name,
-                line=dict(color=colors[i % len(colors)]),
-            )
-        )
-    fig.update_layout(**layout("Cumulative returns", yaxis_title="Growth factor"))
-    return fig
+    return _one_line_per_ticker(
+        series, cumulative_returns_series, "Cumulative returns", "Growth factor"
+    )
 
 
 def plot_correlation_heatmap(corr: pd.DataFrame) -> go.Figure:
@@ -73,26 +81,23 @@ def plot_correlation_heatmap(corr: pd.DataFrame) -> go.Figure:
 def plot_drawdown_comparison(series: dict[str, pd.Series]) -> go.Figure:
     from ..core.risk import drawdown_series
 
-    fig = go.Figure()
-    colors = PALETTE
-    for i, (name, close) in enumerate(series.items()):
-        dd = drawdown_series(close)
-        fig.add_trace(
-            go.Scatter(
-                x=dd.index,
-                y=dd.to_numpy() * 100,
-                mode="lines",
-                name=name,
-                line=dict(color=colors[i % len(colors)]),
-            )
-        )
-    fig.update_layout(
-        **layout("Drawdown comparison", yaxis_title="Drawdown (%)", height=380)
+    # Drawdown is a fraction; the chart is in percent, so the transform scales
+    # here rather than every chart hard-coding a `* 100`.
+    def as_percent(close: pd.Series) -> pd.Series:
+        return drawdown_series(close) * 100
+
+    return _one_line_per_ticker(
+        series, as_percent, "Drawdown comparison", "Drawdown (%)", height=380
     )
-    return fig
 
 
 def plot_risk_return_scatter(table: pd.DataFrame) -> go.Figure:
+    """Risk against return, with Sharpe as the colour scale.
+
+    Size is deliberately constant. Making it encode Sharpe as well would say
+    the same thing twice and, worse, make a barely-different Sharpe look like
+    a much bigger point — area reads as magnitude far faster than hue does.
+    """
     fig = go.Figure(
         go.Scatter(
             x=table["Ann. volatility"],
@@ -108,12 +113,12 @@ def plot_risk_return_scatter(table: pd.DataFrame) -> go.Figure:
                 colorbar=dict(title="Sharpe"),
             ),
             customdata=table["Max drawdown"],
-            hovertemplate="%{text}<br>ann vol %{x:.1%}<br>CAGR %{y:.1%}<br>max DD %{customdata:.1%}<extra></extra>",
+            hovertemplate="%{text}<br>ann vol %{x:.1%}<br>CAGR %{y:.1%}<br>Sharpe %{marker.color:.2f}<br>max DD %{customdata:.1%}<extra></extra>",
         )
     )
     fig.update_layout(
         **layout(
-            "Risk vs return (size = Sharpe, hover for details)",
+            "Risk vs return (colour = Sharpe, hover for details)",
             xaxis_title="Annualized volatility",
             yaxis_title="Annualized return (CAGR)",
             height=460,

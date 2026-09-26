@@ -1,14 +1,19 @@
 """LSTM model definition, training, evaluation and step-wise forecasting."""
 
+from __future__ import annotations
+
 import warnings
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
-from keras import callbacks as keras_callbacks
-from keras import layers, models
 from sklearn.preprocessing import MinMaxScaler
 
 from .callbacks import ProgressReporterCallback
+from .preprocessing import calendar_frame
+
+if TYPE_CHECKING:  # pragma: no cover
+    from keras import models
 
 # PyTorch's cuDNN LSTM path warns that Keras-built weights are not one
 # contiguous chunk of memory. We cannot call flatten_parameters() because
@@ -21,28 +26,82 @@ warnings.filterwarnings(
 )
 
 
+def build_lstm_stack(
+    input_shape: tuple[int, int],
+    units: int,
+    dropout_rate: float,
+    dense_units: int,
+    output_units: int = 1,
+) -> Any:
+    """The shared LSTM trunk: two recurrent layers, norm, dropout, dense head.
+
+    One definition for both forecasters, because they are the same network
+    with a different number of output heads. They were written out separately
+    and had already drifted in unit count and dropout placement; a head-count
+    difference does not justify two architectures that must stay in step.
+
+    `output_units` is the only thing that differs — 1 for the point forecast,
+    one per quantile level for the distribution forecast.
+    """
+    _, layers, models, _ = _keras()
+
+    inputs = layers.Input(shape=input_shape)
+    x = layers.LSTM(units=units, return_sequences=True)(inputs)
+    x = layers.LayerNormalization()(x)
+    x = layers.Dropout(dropout_rate)(x)
+    x = layers.LSTM(units=units // 2, return_sequences=False)(x)
+    x = layers.LayerNormalization()(x)
+    x = layers.Dropout(dropout_rate)(x)
+    x = layers.Dense(dense_units, activation="relu")(x)
+    return models.Model(inputs=inputs, outputs=layers.Dense(output_units)(x))
+
+
+def _keras() -> tuple[Any, Any, Any, Any]:
+    """Import Keras lazily and bind the backend, as `backtest.py` does.
+
+    Importing torch eagerly would make every module that touches this one pay a
+    multi-second import for a model it may never train.
+    """
+    import os
+
+    os.environ.setdefault("KERAS_BACKEND", "torch")
+
+    import keras
+    from keras import layers, models
+    from keras.losses import Loss
+
+    return keras, layers, models, Loss
+
+
+def early_stopping(patience: int = 5) -> Any:
+    """The project's one early-stopping configuration.
+
+    `monitor="val_loss"` with `restore_best_weights=True`, everywhere. Three
+    separate copies of these five lines had drifted, and a run that restores
+    the *last* weights instead of the best silently reports a worse model than
+    it trained.
+    """
+    from keras import callbacks
+
+    return callbacks.EarlyStopping(
+        monitor="val_loss", patience=patience, restore_best_weights=True
+    )
+
+
 def create_lstm_model(
     input_shape: tuple[int, int],
     units: int,
     dropout_rate: float,
     dense_units: int,
-) -> models.Model:
-    """Build a two-layer LSTM network with the Keras Functional API."""
-    inputs = layers.Input(shape=input_shape)
-    x = layers.LSTM(units=units, return_sequences=True)(inputs)
-    x = layers.Dropout(dropout_rate)(x)
-    x = layers.LSTM(units=units // 2, return_sequences=False)(x)
-    x = layers.Dropout(dropout_rate)(x)
-    x = layers.Dense(dense_units, activation="relu")(x)
-    outputs = layers.Dense(1)(x)
-
-    model = models.Model(inputs=inputs, outputs=outputs)
+) -> "models.Model":
+    """The point forecaster: one output, mean-absolute-error loss."""
+    model = build_lstm_stack(input_shape, units, dropout_rate, dense_units, 1)
     model.compile(optimizer="adam", loss="mean_absolute_error")
     return model
 
 
 def train_model(
-    model: models.Model,
+    model: "models.Model",
     x_train: np.ndarray,
     y_train: np.ndarray,
     epochs: int,
@@ -50,17 +109,17 @@ def train_model(
     validation_split: float,
     patience: int,
     progress_callback: ProgressReporterCallback | None = None,
-) -> keras_callbacks.History:
-    """Train the model with early stopping and an optional progress callback."""
-    callbacks: list[keras_callbacks.Callback] = []
+) -> Any:
+    """Train with early stopping and an optional progress callback.
+
+    `verbose="0"` on every training call in this project, deliberately: the
+    epoch lines are ~50 lines of console per run and the progress bar in the
+    UI is the intended channel.
+    """
+    callbacks: list[Any] = []
     if progress_callback is not None:
         callbacks.append(progress_callback)
-    callbacks.append(
-        keras_callbacks.EarlyStopping(
-            monitor="val_loss", patience=patience, restore_best_weights=True
-        )
-    )
-
+    callbacks.append(early_stopping(patience))
     return model.fit(
         x_train,
         y_train,
@@ -72,41 +131,62 @@ def train_model(
     )
 
 
-def predict_on_test(
+def _scaled_to_return(value: float, scaler: MinMaxScaler) -> float:
+    """Undo the scaling on one predicted log-return."""
+    return float(scaler.inverse_transform(np.array([[value]]))[0, 0])
+
+
+def predict_test_prices(
     model: models.Model,
     x_test: np.ndarray,
-    y_test: np.ndarray,
+    origin_prices: np.ndarray,
     scaler: MinMaxScaler,
-) -> pd.DataFrame:
-    """Return a DataFrame of actual vs predicted test prices (original scale)."""
-    predictions = scaler.inverse_transform(model.predict(x_test, verbose="0"))
-    actual = scaler.inverse_transform(y_test.reshape(-1, 1))
-    return pd.DataFrame(
-        {"actual": actual.flatten(), "predicted": predictions.flatten()}
-    )
+) -> np.ndarray:
+    """Predicted prices for the test windows.
+
+    The model predicts log-returns, so each prediction is converted back to a
+    price using the real close on the day the window ends. That keeps the
+    comparison honest: the model never gets to see the day it is predicting.
+    """
+    scaled = model.predict(x_test, verbose="0").flatten()
+    returns = np.array([_scaled_to_return(value, scaler) for value in scaled])
+    return origin_prices * np.exp(returns)
 
 
-def make_future_predictions(
+def forecast_path(
     model: models.Model,
-    scaled_close: np.ndarray,
-    scaler: MinMaxScaler,
+    matrix: np.ndarray,
     sequence_length: int,
     future_steps: int,
+    last_price: float,
     last_date: pd.Timestamp,
+    scaler: MinMaxScaler,
 ) -> pd.DataFrame:
-    """Forecast the next `future_steps` business days, one step at a time.
+    """Forecast the next `future_steps` business days as a price path.
 
-    Each prediction is appended to the window and the oldest value drops off,
-    so small errors can accumulate as the horizon grows.
+    The recursion happens in log-return space, which is the standard way to do
+    it: predicting returns rather than levels means each step is a plausible
+    increment instead of an attempt to reproduce a whole price.
+
+    Calendar columns are known in advance, so they simply continue into the
+    future. Features that depend on volume are deliberately absent from the
+    input for exactly that reason — tomorrow's volume does not exist yet.
+
+    Errors still accumulate: each predicted return feeds the next window.
     """
-    current = scaled_close[-sequence_length:].reshape(1, sequence_length, 1).copy()
-    predicted: list[float] = []
-
-    for _ in range(future_steps):
-        next_step = model.predict(current, verbose="0")[0, 0]
-        predicted.append(next_step)
-        current = np.append(current[:, 1:, :], [[[next_step]]], axis=1)
-
     dates = pd.bdate_range(start=last_date + pd.Timedelta(days=1), periods=future_steps)
-    values = scaler.inverse_transform(np.array(predicted).reshape(-1, 1)).flatten()
-    return pd.DataFrame({"date": dates, "predicted_close": values})
+    calendar = calendar_frame(dates)
+
+    current = matrix[-sequence_length:].copy()
+    price = float(last_price)
+    prices: list[float] = []
+
+    for step in range(future_steps):
+        scaled = model.predict(
+            current.reshape(1, sequence_length, matrix.shape[1]), verbose="0"
+        )[0, 0]
+        price *= np.exp(_scaled_to_return(scaled, scaler))
+        prices.append(price)
+        current = np.vstack([current[1:], np.concatenate([[scaled], calendar[step]])])
+
+    return pd.DataFrame({"date": dates, "predicted_close": prices})

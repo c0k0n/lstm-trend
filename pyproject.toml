@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "lstm-trend"
-version = "0.3.0"
+version = "0.4.0"
 description = "LSTM stock price forecasting with Keras 3 on PyTorch: Streamlit app with deep EDA, baseline comparisons, and limitations."
 readme = "README.md"
 requires-python = ">=3.13"
@@ -12,6 +12,7 @@ license = "MIT"
 keywords = ["lstm", "forecasting", "stocks", "streamlit", "keras", "pytorch", "time-series"]
 dependencies = [
     "keras>=3.15.1",
+    "lightgbm>=4.7.0",
     "numpy>=2.5.1",
     "pandas>=3.0.5",
     "plotly>=6.9.0",
@@ -26,16 +27,46 @@ dependencies = [
 Homepage = "https://lstm-trend.streamlit.app"
 Repository = "https://github.com/c0k0n/lstm-trend"
 
+# GPU on Windows needs PyTorch's own index. The PyPI wheel for Windows is built
+# CPU-only, so `torch.cuda.is_available()` is False there no matter how many
+# nvidia libraries sit next to it — which is exactly why the original `gpu`
+# extra (nvidia-cuda-* from PyPI) never actually worked. See [tool.uv] below.
+[dependency-groups]
+dev = ["pytest>=8.4.2"]
+
 [tool.uv]
 package = false
+torch-backend = "auto"
 
-# Type checking: keras, plotly, scipy and yfinance ship no type stubs, so strict
-# mode reports ~250 "unknown type" diagnostics that no amount of our own
-# annotation can clear. "standard" drops the unknown-type and missing-stub
-# families while keeping every genuine error — reportAttributeAccessIssue in
-# particular stays an error in every mode, so real attribute bugs still surface.
-[tool.pyright]
-typeCheckingMode = "standard"
-pythonVersion = "3.13"
-include = ["src", "streamlit_app.py"]
+[tool.uv.sources]
+torch = { index = "pytorch-cu126" }
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+# cu126 is the index that actually publishes torch 2.13.0 Windows wheels;
+# cu128 does not. PyTorch bundles its own CUDA runtime, so a 13.x driver on
+# the host is fine.
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+# `uv check` runs ty, not pyright, so this is the table that actually bites.
+# keras and yfinance ship no type stubs, which makes ty report unresolved
+# imports and unknown types across those modules — noise no annotation of ours
+# can clear. Everything genuinely wrong stays on.
+[tool.ty.src]
+include = ["src", "tests", "streamlit_app.py"]
 exclude = [".venv", "**/__pycache__"]
+
+[tool.ty.rules]
+unresolved-import = "warn"
+unresolved-attribute = "warn"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Third-party deprecations we cannot fix from here. Both are verified as
+# never actually reached by this project's code paths — see
+# tests/test_no_third_party_warnings.py, which asserts the script_method
+# warning stays absent rather than merely filtered.
+filterwarnings = [
+    "ignore:.*triton not found.*:UserWarning",
+]

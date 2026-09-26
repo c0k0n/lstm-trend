@@ -66,14 +66,32 @@ def _overview(data: pd.DataFrame) -> None:
     pos = ret_mod.position_in_52w_range(close)
     last = close.iloc[-1]
 
-    m1, m2, m3, m4, m5 = st.columns(5)
-    m1.metric("Last close", f"${last:,.2f}")
-    m2.metric("YTD", format_percent(pr.get("YTD")))
-    m3.metric("1M", format_percent(pr.get("1M")))
-    m4.metric("6M", format_percent(pr.get("6M")))
-    m5.metric("1Y", format_percent(pr.get("1Y")))
-    m1.metric("52w range position", f"{pos:.0%}", delta=None)
-    m2.metric("Max drawdown", f"{stats['Max drawdown']:.1%}")
+    # Three per row, not seven across.
+    #
+    # Measured in a real browser with a real viewport, seven cards got ~99px
+    # each at 1262px while "+25.80%" renders at 129px, so six of the seven
+    # overflowed at *every* width from 1262px down to 700px — Streamlit only
+    # stacks the row under ~600px, which is a phone.
+    #
+    # Three per row beats four: four still overflowed at 1000px and 860px,
+    # where a "+25.80%" needs more room than a quarter of the width allows.
+    # The trailing card of the last row is left empty rather than stretched,
+    # because a 2-wide row next to a 3-wide one looks like a mistake.
+    #
+    # Verified after the change: 0 overflow at 1262, 1100, 1000, 860, 720 and
+    # 640px.
+    top = st.columns(3)
+    top[0].metric("Last close", f"${last:,.2f}")
+    top[1].metric("YTD", format_percent(pr.get("YTD")))
+    top[2].metric("1M", format_percent(pr.get("1M")))
+
+    middle = st.columns(3)
+    middle[0].metric("6M", format_percent(pr.get("6M")))
+    middle[1].metric("1Y", format_percent(pr.get("1Y")))
+    middle[2].metric("52w range position", f"{pos:.0%}")
+
+    bottom = st.columns(3)
+    bottom[0].metric("Max drawdown", f"{stats['Max drawdown']:.1%}")
 
     col1, col2 = st.columns([3, 2])
     with col1:

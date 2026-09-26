@@ -3,9 +3,38 @@
 Run with:  uv run streamlit run streamlit_app.py
 """
 
+import logging
 import os
 
 os.environ.setdefault("KERAS_BACKEND", "torch")
+
+
+def _quiet_third_party_noise() -> None:
+    """Silence the one startup warning that comes from a dependency, not us.
+
+    `torch.utils.flop_counter` logs "triton not found" at import time. Triton
+    ships only on Linux; flop counting is a profiling utility this app never
+    calls. Nothing to fix and nothing lost, but startup noise trains you to
+    ignore the console, and a real error is easy to miss in a wall of
+    known-irrelevant warnings. Targeted at that one logger, not a blanket
+    filter — everything else still surfaces.
+
+    A `torch.jit.script_method` FutureWarning used to be filtered here too, on
+    the belief that Keras triggered it. That was wrong, so the filter is gone.
+    Traced it: the decorator lives in `torch/utils/mkldnn.py`, inside an
+    `lru_cache`'d class factory, so it only runs when MKLDNN conversion is
+    actually requested. Measured across every path this app runs — the entry
+    point, all seven page modules, a real analysis, and the walk-forward with
+    the LSTM enabled — the count is zero with no filter installed.
+    `torch.utils.mkldnn.to_mkldnn()` is the only call that fires it, and this
+    project never makes it; Keras does not reach it either. See
+    `tests/test_no_third_party_warnings.py`, which asserts the warning stays
+    absent rather than merely silenced.
+    """
+    logging.getLogger("torch.utils.flop_counter").setLevel(logging.ERROR)
+
+
+_quiet_third_party_noise()
 
 import streamlit as st  # noqa: E402
 

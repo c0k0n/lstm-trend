@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1060 342" width="1060" height="342" role="img" aria-label="The distribution network" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif">
+<rect width="1060" height="342" fill="#0E1117"/>
+<rect x="0" y="0" width="1060" height="342" fill="none" stroke="#232A36" stroke-width="1"/>
+<title>The distribution network</title>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#AEB6C6"/></marker></defs>
+<text x="28" y="34" font-size="17" fill="#E8EAF0" text-anchor="start" font-weight="700">The distribution network</text>
+<text x="28" y="55" font-size="12" fill="#AEB6C6" text-anchor="start" font-weight="400">One pass produces a whole return distribution, trained with the pinball loss.</text>
+<rect x="40" y="90" width="160" height="62" rx="8" fill="none" stroke="#64B5F6" stroke-width="2"/><text x="120.0" y="115.0" font-size="13" fill="#E8EAF0" text-anchor="middle" font-weight="600">Input</text><text x="120.0" y="134.0" font-size="11" fill="#AEB6C6" text-anchor="middle" font-weight="400">60 days × 12</text>
+<text x="120.0" y="168" font-size="11" fill="#AEB6C6" text-anchor="middle" font-weight="400">60</text>
+<line x1="200" y1="121" x2="240" y2="121" stroke="#AEB6C6" stroke-width="1.5" marker-end="url(#a)"/>
+<rect x="240" y="90" width="160" height="62" rx="8" fill="none" stroke="#4FB477" stroke-width="2"/><text x="320.0" y="115.0" font-size="13" fill="#E8EAF0" text-anchor="middle" font-weight="600">LSTM 64</text><text x="320.0" y="134.0" font-size="11" fill="#AEB6C6" text-anchor="middle" font-weight="400">tanh, 4 gates</text>
+<text x="320.0" y="168" font-size="11" fill="#AEB6C6" text-anchor="middle" font-weight="400">64</text>
+<line x1="400" y1="121" x2="440" y2="121" stroke="#AEB6C6" stroke-width="1.5" marker-end="url(#a)"/>
+<rect x="440" y="90" width="160" height="62" rx="8" fill="none" stroke="#AEB6C6" stroke-width="2"/><text x="520.0" y="115.0" font-size="13" fill="#E8EAF0" text-anchor="middle" font-weight="600">LayerNorm</text><text x="520.0" y="134.0" font-size="11" fill="#AEB6C6" text-anchor="middle" font-weight="400">per unit</text>
+<line x1="600" y1="121" x2="640" y2="121" stroke="#AEB6C6" stroke-width="1.5" marker-end="url(#a)"/>
+<rect x="640" y="90" width="160" height="62" rx="8" fill="none" stroke="#AEB6C6" stroke-width="2"/><text x="720.0" y="115.0" font-size="13" fill="#E8EAF0" text-anchor="middle" font-weight="600">Dropout</text><text x="720.0" y="134.0" font-size="11" fill="#AEB6C6" text-anchor="middle" font-weight="400">20%</text>
+<line x1="800" y1="121" x2="840" y2="121" stroke="#AEB6C6" stroke-width="1.5" marker-end="url(#a)"/>
+<rect x="840" y="90" width="160" height="62" rx="8" fill="none" stroke="#4FB477" stroke-width="2"/><text x="920.0" y="115.0" font-size="13" fill="#E8EAF0" text-anchor="middle" font-weight="600">LSTM 32</text><text x="920.0" y="134.0" font-size="11" fill="#AEB6C6" text-anchor="middle" font-weight="400">tanh, 4 gates</text>
+<text x="920.0" y="168" font-size="11" fill="#AEB6C6" text-anchor="middle" font-weight="400">32</text>
+<path d="M 1000 152 L 1000 176 L 40 176 L 40 186" stroke="#AEB6C6" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+<rect x="40" y="186" width="160" height="62" rx="8" fill="none" stroke="#AEB6C6" stroke-width="2"/><text x="120.0" y="211.0" font-size="13" fill="#E8EAF0" text-anchor="middle" font-weight="600">LayerNorm</text><text x="120.0" y="230.0" font-size="11" fill="#AEB6C6" text-anchor="middle" font-weight="400">per unit</text>
+<line x1="200" y1="217" x2="240" y2="217" stroke="#AEB6C6" stroke-width="1.5" marker-end="url(#a)"/>
+<rect x="240" y="186" width="160" height="62" rx="8" fill="none" stroke="#AEB6C6" stroke-width="2"/><text x="320.0" y="211.0" font-size="13" fill="#E8EAF0" text-anchor="middle" font-weight="600">Dropout</text><text x="320.0" y="230.0" font-size="11" fill="#AEB6C6" text-anchor="middle" font-weight="400">20%</text>
+<line x1="400" y1="217" x2="440" y2="217" stroke="#AEB6C6" stroke-width="1.5" marker-end="url(#a)"/>
+<rect x="440" y="186" width="160" height="62" rx="8" fill="none" stroke="#FFA726" stroke-width="2"/><text x="520.0" y="211.0" font-size="13" fill="#E8EAF0" text-anchor="middle" font-weight="600">Dense 32</text><text x="520.0" y="230.0" font-size="11" fill="#AEB6C6" text-anchor="middle" font-weight="400">relu</text>
+<text x="520.0" y="264" font-size="11" fill="#AEB6C6" text-anchor="middle" font-weight="400">32</text>
+<line x1="600" y1="217" x2="640" y2="217" stroke="#AEB6C6" stroke-width="1.5" marker-end="url(#a)"/>
+<rect x="640" y="186" width="160" height="62" rx="8" fill="none" stroke="#EF5350" stroke-width="2"/><text x="720.0" y="211.0" font-size="13" fill="#E8EAF0" text-anchor="middle" font-weight="600">Output</text><text x="720.0" y="230.0" font-size="11" fill="#AEB6C6" text-anchor="middle" font-weight="400">25 quantiles</text>
+<text x="720.0" y="264" font-size="11" fill="#AEB6C6" text-anchor="middle" font-weight="400">25</text>
+<text x="28" y="330" font-size="13" fill="#4FB477" text-anchor="start" font-weight="700">total trainable parameters: 34,201</text></svg>

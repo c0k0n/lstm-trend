@@ -14,6 +14,18 @@ env/
 # Linting / tooling caches
 .ruff_cache/
 .mypy_cache/
+.pytest_cache/
+
+# Forecast journal (runtime data, not source)
+# SQLite also writes -wal, -shm and -journal siblings next to the database
+# when it is open, so the family is ignored rather than just the file.
+journal.db*
+
+# One-off analysis and figure output. The backtest scripts under
+# .workbuddy-ai/ write PNGs and scratch files; none of it is source, and a
+# stray render must never end up in a commit.
+*.log
+_preview.html
 
 # Environment and secrets
 .env

@@ -182,6 +182,22 @@ def plot_underwater(close: pd.Series) -> go.Figure:
     return fig
 
 
+def _close_trace(close: pd.Series) -> go.Scatter:
+    """The price line, drawn identically wherever it appears.
+
+    It shows up in the indicator overlay and the Bollinger chart, and the two
+    copies had to agree on colour and width or the same series would look like
+    two different things on one page.
+    """
+    return go.Scatter(
+        x=close.index,
+        y=close.values,
+        mode="lines",
+        name="Close",
+        line=dict(color=DARK_THEME["actual"]),
+    )
+
+
 def plot_price_with_indicators(
     close: pd.Series,
     crosses: pd.DataFrame | None = None,
@@ -192,51 +208,44 @@ def plot_price_with_indicators(
 ) -> go.Figure:
     from ..core.indicators import ema, sma
 
-    fig = go.Figure(
-        go.Scatter(
-            x=close.index,
-            y=close.values,
-            mode="lines",
-            name="Close",
-            line=dict(color=DARK_THEME["actual"]),
-        )
+    fig = go.Figure(_close_trace(close))
+
+    # The optional arguments let a caller pass series it has already computed;
+    # the helper computes them when it is not.
+    from ..core.indicators import ema, sma
+
+    overlays = (
+        (
+            "SMA 20",
+            sma20 if sma20 is not None else sma(close, 20),
+            COLOR_NAIVE,
+            "solid",
+        ),
+        (
+            "SMA 50",
+            sma50 if sma50 is not None else sma(close, 50),
+            COLOR_PREDICTED,
+            "solid",
+        ),
+        (
+            "SMA 200",
+            sma200 if sma200 is not None else sma(close, 200),
+            COLOR_MA,
+            "solid",
+        ),
+        ("EMA 50", ema50 if ema50 is not None else ema(close, 50), COLOR_FUTURE, "dot"),
     )
-    fig.add_trace(
-        go.Scatter(
-            x=close.index,
-            y=(sma20 if sma20 is not None else sma(close, 20)).values,
-            mode="lines",
-            name="SMA 20",
-            line=dict(color=COLOR_NAIVE),
+    for name, values, color, dash in overlays:
+        fig.add_trace(
+            go.Scatter(
+                x=close.index,
+                y=values,
+                mode="lines",
+                name=name,
+                line=dict(color=color, dash=dash),
+            )
         )
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=close.index,
-            y=(sma50 if sma50 is not None else sma(close, 50)).values,
-            mode="lines",
-            name="SMA 50",
-            line=dict(color=COLOR_PREDICTED),
-        )
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=close.index,
-            y=(sma200 if sma200 is not None else sma(close, 200)).values,
-            mode="lines",
-            name="SMA 200",
-            line=dict(color=COLOR_MA),
-        )
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=close.index,
-            y=(ema50 if ema50 is not None else ema(close, 50)).values,
-            mode="lines",
-            name="EMA 50",
-            line=dict(color=COLOR_FUTURE, dash="dot"),
-        )
-    )
+
     if crosses is not None and len(crosses):
         golden = crosses[crosses["Direction"] == "Golden"]
         death = crosses[crosses["Direction"] == "Death"]
@@ -327,16 +336,7 @@ def plot_bollinger(
     from ..core.indicators import bollinger_bands
 
     bb = bb_values if bb_values is not None else bollinger_bands(close)
-    fig = go.Figure()
-    fig.add_trace(
-        go.Scatter(
-            x=close.index,
-            y=close.values,
-            mode="lines",
-            name="Close",
-            line=dict(color=DARK_THEME["actual"]),
-        )
-    )
+    fig = go.Figure(_close_trace(close))
     fig.add_trace(
         go.Scatter(
             x=bb.index,

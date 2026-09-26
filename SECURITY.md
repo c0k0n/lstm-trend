@@ -14,7 +14,12 @@ reproduction steps, likely impact, and safe supporting evidence.
 
 This is an exploratory learning project and is **not financial advice**. It
 downloads public market data and trains a small model locally. There is no
-authentication, no database, no user accounts, and nothing persists between runs.
+authentication, no user accounts, and no network service of its own.
+
+One thing does persist: forecasts are written to a local SQLite file
+(`journal.db`) so they can be graded once their dates pass. It holds tickers,
+timestamps and prices only — no credentials — and it is gitignored. On Streamlit
+Community Cloud the filesystem is ephemeral, so it does not outlive the session.
 
 Two things worth knowing if you are poking at it:
 

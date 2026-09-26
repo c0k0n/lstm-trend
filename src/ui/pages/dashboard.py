@@ -6,6 +6,7 @@ from typing import Any
 import streamlit as st
 
 from ...constants import APP_TITLE, SUGGESTED_SYMBOLS
+from ...core.journal import ForecastEntry, connect, record
 from ...core.pipeline import AnalysisResult
 from ..sidebar import (
     get_analysis,
@@ -73,6 +74,34 @@ def _write_query_params(params: dict[str, Any]) -> None:
     st.query_params["horizon"] = str(params["future_steps"])
 
 
+def _write_to_journal(result: AnalysisResult) -> int:
+    """Persist this run's forecast so it can be graded once the dates pass.
+
+    The price at the moment of forecasting is stored alongside each prediction,
+    which is what lets the settled record be scored against 'repeat yesterday'
+    later without re-running anything.
+    """
+    generated = datetime.datetime.now()
+    origin_price = float(result.close.iloc[-1])
+    entries = [
+        ForecastEntry(
+            symbol=result.symbol,
+            generated_at=generated,
+            target_date=date.date(),
+            model="LSTM",
+            point=float(point),
+            origin_price=origin_price,
+        )
+        for date, point in zip(result.future["date"], result.future["predicted_close"])
+    ]
+
+    connection = connect()
+    try:
+        return record(connection, entries)
+    finally:
+        connection.close()
+
+
 def render() -> None:
     st.set_page_config(
         page_title=f"Dashboard — {APP_TITLE} | LSTM stock price forecasting",
@@ -127,6 +156,14 @@ def render() -> None:
 
     _write_query_params(params)
     render_result(result)
+
+    stored = _write_to_journal(result)
+    if stored:
+        st.caption(
+            f"📓 {stored} forecast days written to the journal. Once their "
+            "dates pass, the **Evidence** page grades them against what "
+            "actually happened."
+        )
 
 
 if __name__ == "__main__":

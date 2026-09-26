@@ -9,7 +9,7 @@ import plotly.graph_objects as go
 
 from ..constants import COLOR_FUTURE, COLOR_MA, COLOR_NAIVE, COLOR_PREDICTED
 from ..core.baselines import MOVING_AVERAGE, NAIVE
-from .chart_theme import DARK_THEME, layout
+from .chart_theme import DARK_THEME, layout, with_alpha
 
 if TYPE_CHECKING:
     from ..core.pipeline import AnalysisResult
@@ -102,9 +102,40 @@ def plot_test_predictions(
     return fig
 
 
-def plot_forecast(result: "AnalysisResult") -> go.Figure:
-    """Historical close + test predictions + future forecast in one view."""
+def plot_forecast(
+    result: "AnalysisResult", band: pd.DataFrame | None = None
+) -> go.Figure:
+    """Historical close + test predictions + future forecast in one view.
+
+    `band` carries `lower` and `upper` columns aligned with the forecast dates;
+    when given, the forecast is drawn inside a shaded range instead of as a bare
+    line.
+    """
     fig = go.Figure()
+
+    if band is not None:
+        fig.add_trace(
+            go.Scatter(
+                x=result.future["date"],
+                y=band["upper"].to_numpy(),
+                mode="lines",
+                line=dict(width=0),
+                showlegend=False,
+                hoverinfo="skip",
+            )
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=result.future["date"],
+                y=band["lower"].to_numpy(),
+                mode="lines",
+                line=dict(width=0),
+                fill="tonexty",
+                fillcolor=with_alpha(COLOR_FUTURE, 0.18),
+                name="Uncertainty band",
+                hoverinfo="skip",
+            )
+        )
     fig.add_trace(
         go.Scatter(
             x=result.close.index,

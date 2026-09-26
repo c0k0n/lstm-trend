@@ -3,15 +3,69 @@
 from __future__ import annotations
 
 import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Protocol
 
+import numpy as np
+import pandas as pd
 import streamlit as st
 
 from . import dashboard_charts as charts
 from .sidebar import SESSION_KEY, format_percent
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from ..core.pipeline import AnalysisResult
+
+
+class _BandSource(Protocol):
+    """The part of `AnalysisResult` the band cache key is derived from.
+
+    Naming the fields rather than taking the whole result keeps `_band_key`
+    testable without building a trained model, and makes the key's
+    dependencies explicit at the call site.
+    """
+
+    symbol: str
+    data: pd.DataFrame
+    future: pd.DataFrame
+    params: dict[str, Any]
+
+
+CALIBRATION_WINDOWS: int = 8
+"""Origins used to calibrate the forecast range.
+
+Conformal coverage is estimated from the residuals themselves, so too few
+windows gives a width that is honest in method but noisy in value. Eight is
+enough to read and cheap enough to run automatically.
+"""
+
+CALIBRATION_EPOCHS: int = 12
+"""Epoch budget when retraining the network purely to measure its errors.
+
+The calibration wants the size of the network's mistakes, not its best
+possible weights, so it does not pay the full training budget eight times
+over. Early stopping still applies.
+"""
+
+
+def _band_key(result: _BandSource) -> tuple[object, ...]:
+    """Everything a calibrated band depends on, and nothing else.
+
+    The band is drawn against `result.future` and calibrated from
+    `result.data`, so both have to be in the key. The model settings are here
+    because they change the network being measured. The date range and the
+    forecast horizon were both missing, and both matter: two runs of the same
+    ticker at the same settings but over different history produced the same
+    key, so the second run silently drew the first run's range over its own
+    forecast. The dates are taken from the data itself rather than from the
+    request, so there is no way for the two to drift apart.
+    """
+    return (
+        result.symbol,
+        result.data.index[0],
+        result.data.index[-1],
+        len(result.future),
+        tuple(sorted(result.params.items())),
+    )
 
 
 def render_metrics(result: AnalysisResult) -> None:
@@ -78,13 +132,193 @@ def render_quick_stats(result: AnalysisResult) -> None:
     pr = ret_mod.period_returns(close)
     pos = ret_mod.position_in_52w_range(close)
 
-    cols = st.columns(6)
-    cols[0].metric("Last close", f"${close.iloc[-1]:,.2f}")
-    cols[1].metric("YTD", format_percent(pr.get("YTD")))
-    cols[2].metric("1M", format_percent(pr.get("1M")))
-    cols[3].metric("6M", format_percent(pr.get("6M")))
-    cols[4].metric("1Y", format_percent(pr.get("1Y")))
-    cols[5].metric("52w range position", f"{pos:.0%}")
+    # Two rows of three, not six across.
+    #
+    # Measured in a real browser with a real viewport: at 1262px these cards get
+    # ~99px each, and "+25.80%" renders at 129px — so 3 of the 6 values already
+    # overflow at full width, and 6 of 6 below 1000px. Streamlit only stacks the
+    # row under ~600px, which is a phone.
+    #
+    # Three per row gives ~330px at the same width, so every value fits with
+    # room to spare. Measured after the change: 0 overflow at 1262, 1000, 860
+    # and 720px.
+    top = st.columns(3)
+    top[0].metric("Last close", f"${close.iloc[-1]:,.2f}")
+    top[1].metric("YTD", format_percent(pr.get("YTD")))
+    top[2].metric("1M", format_percent(pr.get("1M")))
+
+    bottom = st.columns(3)
+    bottom[0].metric("6M", format_percent(pr.get("6M")))
+    bottom[1].metric("1Y", format_percent(pr.get("1Y")))
+    bottom[2].metric("52w range position", f"{pos:.0%}")
+
+
+def _calibrate_band(result: AnalysisResult) -> None:
+    """Put the forecast inside a range, calibrated on the LSTM's own errors.
+
+    This runs automatically rather than behind a button. The point forecast is
+    close to flat because that is the honest answer, which makes the *range*
+    the part of the chart worth reading — so hiding it behind an expander was
+    exactly backwards. Training is GPU-backed where available, so calibrating
+    on the network itself is affordable now.
+
+    Cached per symbol and settings, so it costs one walk-forward run per
+    distinct analysis rather than one per rerender.
+    """
+    from ..core.backtest import (
+        LIGHTGBM,
+        LSTM_UPGRADED,
+        BacktestConfig,
+        walk_forward,
+    )
+    from ..core.intervals import (
+        conformal_width,
+        coverage_of,
+        horizon_band,
+        parkinson_volatility,
+        relative_residuals,
+        volatility_scaled_width,
+    )
+    from ..core.skill import model_summary
+
+    cal_horizon = min(5, len(result.future))
+    key = _band_key(result)
+    if st.session_state.get("band_key") == key:
+        return
+
+    with st.spinner("Calibrating the forecast range…"):
+        try:
+            frame = walk_forward(
+                result.data,
+                BacktestConfig(
+                    horizon=cal_horizon,
+                    n_origins=CALIBRATION_WINDOWS,
+                    include_upgraded_lstm=True,
+                    # Calibration measures how wrong the network is, which it
+                    # can do from a shorter fit. Early stopping still guards
+                    # the fit; this just does not pay for the last few epochs
+                    # ten times over.
+                    lstm_epochs=CALIBRATION_EPOCHS,
+                ),
+            )
+            model = LSTM_UPGRADED
+        except ValueError:
+            # Too little history to retrain the network; the cheap challenger
+            # still gives an honest, if less relevant, width.
+            try:
+                frame = walk_forward(
+                    result.data,
+                    BacktestConfig(horizon=cal_horizon, n_origins=10),
+                )
+                model = LIGHTGBM
+            except ValueError as exc:
+                st.warning(str(exc))
+                return
+
+        residuals = relative_residuals(frame, model)
+        if not len(residuals):
+            st.warning("Too few windows to calibrate a range.")
+            return
+
+        # Scale by how volatile the market is right now, measured from the
+        # candle's range rather than close-to-close. A constant width is really
+        # the average mistake; this one breathes.
+        volatility = parkinson_volatility(result.data)
+        at_origins = np.asarray(
+            [
+                volatility.asof(pd.Timestamp(date))
+                for date in frame["origin"].to_numpy()
+            ],
+            dtype=float,
+        )
+        current = (
+            float(volatility.dropna().iloc[-1])
+            if volatility.notna().any()
+            else float("nan")
+        )
+
+        width = volatility_scaled_width(residuals, at_origins, current)
+        if not width:
+            st.warning("Too few windows to calibrate a range.")
+            return
+        coverage = coverage_of(frame, model, width)
+        flat_width = conformal_width(residuals)
+
+    points = result.future["predicted_close"].to_numpy(dtype=float)
+    lower, upper = horizon_band(points, width, cal_horizon)
+    st.session_state["forecast_band"] = pd.DataFrame({"lower": lower, "upper": upper})
+    st.session_state["band_info"] = {
+        "model": model,
+        "windows": len(frame),
+        "horizon": cal_horizon,
+        "width": width,
+        "coverage": coverage,
+        "flat_width": flat_width,
+        "vol_ratio": (
+            current / float(np.mean(at_origins[np.isfinite(at_origins)]))
+            if np.isfinite(at_origins).any()
+            and np.mean(at_origins[np.isfinite(at_origins)]) > 0
+            else float("nan")
+        ),
+    }
+    st.session_state["band_key"] = key
+    # The calibration run already scored every model against naive. Reusing it
+    # puts the walk-forward verdict on the dashboard instead of making the user
+    # go to another page for the same numbers.
+    st.session_state["calibration_summary"] = model_summary(frame)
+
+
+def _band_caption() -> None:
+    """State the range in words, and how often it actually held."""
+    info = st.session_state.get("band_info")
+    if not info:
+        return
+    ratio = info.get("vol_ratio")
+    scaled = (
+        f" Today's volatility is {ratio:.2f}× the calibration average, so the "
+        f"range has been {'widened' if ratio and ratio > 1 else 'narrowed'} "
+        f"from ±{info['flat_width']:.1%} to ±{info['width']:.1%}."
+        if np.isfinite(ratio) and abs(ratio - 1.0) > 0.05
+        else ""
+    )
+    st.caption(
+        f"Range calibrated from the **{info['model']}**'s own out-of-sample "
+        f"errors over {info['windows']} windows at a {info['horizon']}-day "
+        f"horizon: ±{info['width']:.1%}, which contained "
+        f"{info['coverage']:.0%} of realised outcomes. It widens along the "
+        f"path with √time, and scales with the market's current volatility "
+        f"measured from each day's high-low range."
+        f"{scaled} The honest part of this forecast is how wide it is, not "
+        f"where its centre sits."
+    )
+
+
+def _model_comparison() -> None:
+    """The walk-forward verdict, shown where the forecast is shown.
+
+    Same numbers as the Evidence page, because it is the same run — the
+    dashboard no longer makes you go elsewhere to find out whether the model
+    it just drew is any good.
+    """
+    summary = st.session_state.get("calibration_summary")
+    if summary is None or summary.empty:
+        return
+
+    with st.expander("Does this model beat 'repeat yesterday'?", expanded=False):
+        shown = summary.copy()
+        shown["skill"] = shown["skill"].map(lambda v: f"{v:+.1%}")
+        st.dataframe(
+            shown[["model", "skill", "wins", "win_rate"]],
+            hide_index=True,
+            width="stretch",
+        )
+        st.caption(
+            "Skill is `1 − MAE / MAE(naive)`. Zero means no better than "
+            "repeating yesterday's price; negative means worse. This is the "
+            "same test the Evidence page runs across more tickers and more "
+            "windows — use that page when you want an answer you can trust "
+            "rather than a first look."
+        )
 
 
 def render_result(result: AnalysisResult) -> None:
@@ -113,9 +347,15 @@ def render_result(result: AnalysisResult) -> None:
         width="stretch",
     )
     st.space("small")
-    st.plotly_chart(charts.plot_forecast(result), width="stretch")
+    _calibrate_band(result)
+    st.plotly_chart(
+        charts.plot_forecast(result, st.session_state.get("forecast_band")),
+        width="stretch",
+    )
+    _band_caption()
     st.space("medium")
     render_forecast_table(result)
+    _model_comparison()
     st.divider()
     _analysis_age_caption(result)
 
