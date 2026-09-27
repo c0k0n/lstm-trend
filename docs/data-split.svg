@@ -6,7 +6,7 @@
       .sub  { fill: #9AA1AD; font: 400 11px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
       .cap  { fill: #9AA1AD; font: 400 11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
       .pct  { fill: #0E1117; font: 700 13px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-    </style>
+    @media (prefers-reduced-motion: reduce){*{animation:none!important}}</style>
   </defs>
 
   <rect class="bg" x="0" y="0" width="760" height="176" rx="12"/>

@@ -418,8 +418,7 @@ everything else, including attribute access, stays an error, so a real bug
 cannot hide behind the configuration.
 
 A `[tool.pyright]` section would be dead config: `uv check` runs ty, and ty
-never reads it. An earlier version of this README described one; it was
-removed when the project moved to ty.
+never reads it.
 
 ### GPU
 
@@ -625,8 +624,7 @@ that survive when the point forecast does not:
 *(Every figure is recomputed from the raw per-window CSVs by
 `tests/test_documented_numbers.py`, not transcribed. Skill is averaged within
 each ticker and then across tickers — dollar errors do not add across stocks.
-An earlier version of this file quoted 122/300 and p = 0.0015; the CSVs give
-117/300 and p = 0.00017. The skill figure, −15.0%, was right all along.)*
+The skill figure, −15.0%, is the headline.)*
 
 ### What the negative result is made of
 
@@ -658,7 +656,7 @@ The candle is the clearest case: it helped on 6 of 20 tickers and cost 7.4 point
 on average, so it ships implemented but switched off. More information about the
 past is not more information about the future.
 
-### The recursive path — the app's weakest number, now measured
+### The recursive path — the app's weakest number
 
 Every number above is a *direct* forecast: one network pass produces the day-5
 return. The dashboard does something different — it rolls forward one day at a
@@ -670,14 +668,26 @@ identical windows, with the identical model:
 | Direct (day-5, one pass) | −34.8% | 24/64 | 0.060 |
 | **Recursive (what the app draws)** | **−407.0%** | 10/64 | 2e−08 |
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/skill-by-ticker-dark.svg" />
+  <source media="(prefers-color-scheme: light)" srcset="docs/skill-by-ticker-light.svg" />
+  <img
+    alt="Grouped bar chart of skill versus the naive baseline for eight tickers. Direct beats recursive on every one. Direct runs from +6.8% on NVDA to −95.3% on JPM; recursive from −105.7% to −1039%. The axis is clipped at −300%, so the recursive bars for AAPL, AMZN, JPM and XOM run past it and are marked with a chevron."
+    src="docs/skill-by-ticker-light.svg" width="1000" />
+</picture>
+
 Direct wins on 7 of 8 tickers, paired t p = 0.003. This is not a marginal
 difference: compounding five recursive steps takes a model already worse than
-naive and makes it an order of magnitude worse. The app's own docs had called
-this method "weaker" without ever quantifying it. Now it is in the [limits](#limits)
-as well, because the chart on the Dashboard is drawn from the method that
-performs worst.
+naive and makes it an order of magnitude worse. The Dashboard chart is drawn
+from the method that performs worst, and the [limits](#limits) section says so.
 
-### A quantile LSTM — calibrates, and is wider than the band it replaced
+Regenerate the chart with `uv run python src/figures.py`. It recomputes
+every bar from the raw per-window CSVs using `core.skill.pooled_summary`, so the
+figure and the tables above cannot drift apart. Those CSVs live under the
+gitignored `.workbuddy-ai/`, so regenerating needs a machine that has run the
+benchmarks; on a fresh clone the committed figures are the record.
+
+### A quantile LSTM — calibrates, but wider than conformal
 
 `src/core/quantile_model.py` trains a 25-head LSTM on the pinball loss, so one
 forward pass yields a full return distribution. Over 56 windows:
@@ -687,6 +697,14 @@ forward pass yields a full return distribution. Over 56 windows:
 | Mean calibration error across 25 levels | 0.044 |
 | 90% band realised coverage | 92.9% (target 90%) |
 | Monotone at every level | yes |
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/calibration-coverage-dark.svg" />
+  <source media="(prefers-color-scheme: light)" srcset="docs/calibration-coverage-light.svg" />
+  <img
+    alt="Ring gauge reading 92.9% realised coverage against a 90% target, measured over 56 held-out windows using the 0.05 to 0.95 quantile band. A tick on the track marks the target; the band overshoots it slightly, meaning it errs wide rather than narrow."
+    src="docs/calibration-coverage-light.svg" width="600" />
+</picture>
 
 The network genuinely learns a distribution — the first thing in this project to
 hit its stated target. But two controls say it is not yet the better band:

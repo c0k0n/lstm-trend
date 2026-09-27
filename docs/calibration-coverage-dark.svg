@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="320" viewBox="0 0 600 320" fill="none" role="img" aria-labelledby="ttl dsc">
+<title id="ttl">Calibration: the 90% band covers 92.9% of outcomes</title>
+<desc id="dsc">Ring gauge. The learned quantile band targets 90% coverage and realises 92.9% across 56 held-out windows, so it is slightly conservative rather than overconfident.</desc>
+<style>
+text{font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;}
+.t{fill:#E6EDF3;}
+.s{fill:#8B949E;}
+.mono{font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace;}
+.surf{fill:#0D1117;}
+.panel{fill:#151B23;stroke:#30363D;}
+.hair{stroke:#21262D;}
+.zero{stroke:#6E7681;stroke-dasharray:3 4;}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes flow{to{stroke-dashoffset:-40}}
+.bar{animation:grow .8s cubic-bezier(.22,1,.36,1) backwards;transform-box:fill-box;transform-origin:var(--o,left center)}@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}.sweep{animation:sweep 1.1s cubic-bezier(.22,1,.36,1) backwards}@keyframes sweep{from{stroke-dashoffset:var(--full)}to{stroke-dashoffset:var(--rest)}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important}}
+</style>
+<rect class="surf" width="600" height="320" rx="14"/>
+<circle cx="148" cy="150" r="92" fill="none" stroke="#21262D" stroke-width="22"/>
+<circle cx="148" cy="150" r="92" fill="none" stroke="#3FB950" stroke-width="22" stroke-linecap="round" stroke-dasharray="578.1" stroke-dashoffset="41.3" style="--full:578.1;--rest:41.3" transform="rotate(-90 148 150)" class="sweep"/>
+<line x1="101.0" y1="85.3" x2="86.9" y2="65.9" stroke="#0D1117" stroke-width="2.5"/>
+<text class="t" x="148" y="152" font-size="33" font-weight="650" text-anchor="middle">92.9%</text>
+<text class="s" x="148" y="174" font-size="11" text-anchor="middle">realised coverage</text>
+<text class="t" x="292" y="92" font-size="15" font-weight="600">Target 90%</text>
+<text class="s" x="292" y="116" font-size="12">The band errs wide, not narrow &#8212;</text>
+<text class="s" x="292" y="134" font-size="12">the safe direction to be wrong in.</text>
+<text class="s mono" x="292" y="166" font-size="11">56 held-out windows</text>
+<text class="s" x="292" y="184" font-size="11">levels 0.05&#8211;0.95</text>
+<text class="s" x="24" y="304" font-size="11.5">Quantile band against realised return; tick marks the 90% target.</text>
+</svg>

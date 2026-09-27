@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="470" viewBox="0 0 1000 470" fill="none" role="img" aria-labelledby="ttl dsc">
+<title id="ttl">Skill by ticker: direct beats recursive on all eight</title>
+<desc id="dsc">Grouped horizontal bars of skill versus the naive yesterday baseline for eight tickers. Direct ranges from +6.8% on NVDA to -95.3% on JPM; recursive ranges from -105.7% to -1039.0%. Direct beats recursive on every ticker.</desc>
+<style>
+text{font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;}
+.t{fill:#E6EDF3;}
+.s{fill:#8B949E;}
+.mono{font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace;}
+.surf{fill:#0D1117;}
+.panel{fill:#151B23;stroke:#30363D;}
+.hair{stroke:#21262D;}
+.zero{stroke:#6E7681;stroke-dasharray:3 4;}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes flow{to{stroke-dashoffset:-40}}
+.bar{animation:grow .8s cubic-bezier(.22,1,.36,1) backwards;transform-box:fill-box;transform-origin:var(--o,left center)}@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}.sweep{animation:sweep 1.1s cubic-bezier(.22,1,.36,1) backwards}@keyframes sweep{from{stroke-dashoffset:var(--full)}to{stroke-dashoffset:var(--rest)}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important}}
+</style>
+<rect class="surf" width="1000" height="470" rx="14"/>
+<text class="t" x="24" y="34" font-size="16" font-weight="600">Skill vs the naive baseline, per ticker</text>
+<text class="s" x="24" y="54" font-size="12">Positive = beats yesterday&#39;s guess. Recomputed from the raw per-window CSVs. Axis clipped at &#8722;300%; <tspan fill="#8B949E">&#966;</tspan> marks a bar that continues past it.</text>
+<line class="zero" x1="904.0" y1="64" x2="904.0" y2="406"/>
+<text class="s mono" x="910.0" y="58" font-size="11.5">0%</text>
+<text class="s mono" x="298.0" y="422" font-size="11.5" text-anchor="middle">-225.0%</text>
+<text class="s mono" x="500.0" y="422" font-size="11.5" text-anchor="middle">-150.0%</text>
+<text class="s mono" x="702.0" y="422" font-size="11.5" text-anchor="middle">-75.0%</text>
+<text class="s mono" x="904.0" y="422" font-size="11.5" text-anchor="middle">0.0%</text>
+<text class="t mono" x="84" y="89.5" font-size="12" text-anchor="end">AAPL</text>
+<rect x="96.0" y="76.0" width="808.0" height="14.2" rx="3" fill="#F85149" class="bar" style="--o:904.0px;animation-delay:0ms"/>
+<path d="M105.0 79.1 L111.0 83.1 L105.0 87.1" fill="none" stroke="#0D1117" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<text class="mono" x="118.0" y="86.4" font-size="11.5" text-anchor="start" fill="#0D1117">-431.7%</text>
+<rect x="764.8" y="96.2" width="139.2" height="14.2" rx="3" fill="#58A6FF" class="bar" style="--o:904.0px;animation-delay:607.5ms"/>
+<text class="mono" x="772.8" y="106.6" font-size="11.5" text-anchor="start" fill="#0D1117">-51.7%</text>
+<text class="t mono" x="84" y="130.0" font-size="12" text-anchor="end">AMZN</text>
+<rect x="96.0" y="116.5" width="808.0" height="14.2" rx="3" fill="#F85149" class="bar" style="--o:904.0px;animation-delay:45ms"/>
+<path d="M105.0 119.6 L111.0 123.6 L105.0 127.6" fill="none" stroke="#0D1117" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<text class="mono" x="118.0" y="126.9" font-size="11.5" text-anchor="start" fill="#0D1117">-574.7%</text>
+<rect x="821.4" y="136.8" width="82.6" height="14.2" rx="3" fill="#58A6FF" class="bar" style="--o:904.0px;animation-delay:652.5ms"/>
+<text class="mono" x="896.0" y="147.1" font-size="11.5" text-anchor="end" fill="#58A6FF">-30.7%</text>
+<text class="t mono" x="84" y="170.5" font-size="12" text-anchor="end">GOOGL</text>
+<rect x="111.1" y="157.0" width="792.9" height="14.2" rx="3" fill="#F85149" class="bar" style="--o:904.0px;animation-delay:90ms"/>
+<text class="mono" x="119.1" y="167.4" font-size="11.5" text-anchor="start" fill="#0D1117">-294.4%</text>
+<rect x="783.7" y="177.2" width="120.3" height="14.2" rx="3" fill="#58A6FF" class="bar" style="--o:904.0px;animation-delay:697.5ms"/>
+<text class="mono" x="791.7" y="187.6" font-size="11.5" text-anchor="start" fill="#0D1117">-44.7%</text>
+<text class="t mono" x="84" y="211.0" font-size="12" text-anchor="end">JPM</text>
+<rect x="96.0" y="197.5" width="808.0" height="14.2" rx="3" fill="#F85149" class="bar" style="--o:904.0px;animation-delay:135ms"/>
+<path d="M105.0 200.6 L111.0 204.6 L105.0 208.6" fill="none" stroke="#0D1117" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<text class="mono" x="118.0" y="207.9" font-size="11.5" text-anchor="start" fill="#0D1117">-1,039%</text>
+<rect x="647.4" y="217.8" width="256.6" height="14.2" rx="3" fill="#58A6FF" class="bar" style="--o:904.0px;animation-delay:742.5ms"/>
+<text class="mono" x="655.4" y="228.1" font-size="11.5" text-anchor="start" fill="#0D1117">-95.3%</text>
+<text class="t mono" x="84" y="251.5" font-size="12" text-anchor="end">META</text>
+<rect x="609.2" y="238.0" width="294.8" height="14.2" rx="3" fill="#F85149" class="bar" style="--o:904.0px;animation-delay:180ms"/>
+<text class="mono" x="617.2" y="248.4" font-size="11.5" text-anchor="start" fill="#0D1117">-109.5%</text>
+<rect x="892.5" y="258.2" width="11.5" height="14.2" rx="3" fill="#58A6FF" class="bar" style="--o:904.0px;animation-delay:787.5ms"/>
+<text class="mono" x="896.0" y="268.6" font-size="11.5" text-anchor="end" fill="#58A6FF">-4.3%</text>
+<text class="t mono" x="84" y="292.0" font-size="12" text-anchor="end">MSFT</text>
+<rect x="105.1" y="278.5" width="798.9" height="14.2" rx="3" fill="#F85149" class="bar" style="--o:904.0px;animation-delay:225ms"/>
+<text class="mono" x="113.1" y="288.9" font-size="11.5" text-anchor="start" fill="#0D1117">-296.6%</text>
+<rect x="904.0" y="298.8" width="1.5" height="14.2" rx="3" fill="#58A6FF" class="bar" style="--o:904.0px;animation-delay:832.5ms"/>
+<text class="mono" x="912.0" y="309.1" font-size="11.5" text-anchor="start" fill="#58A6FF">4.8%</text>
+<text class="t mono" x="84" y="332.5" font-size="12" text-anchor="end">NVDA</text>
+<rect x="619.4" y="319.0" width="284.6" height="14.2" rx="3" fill="#F85149" class="bar" style="--o:904.0px;animation-delay:270ms"/>
+<text class="mono" x="627.4" y="329.4" font-size="11.5" text-anchor="start" fill="#0D1117">-105.7%</text>
+<rect x="904.0" y="339.2" width="1.5" height="14.2" rx="3" fill="#58A6FF" class="bar" style="--o:904.0px;animation-delay:877.5ms"/>
+<text class="mono" x="912.0" y="349.6" font-size="11.5" text-anchor="start" fill="#58A6FF">6.8%</text>
+<text class="t mono" x="84" y="373.0" font-size="12" text-anchor="end">XOM</text>
+<rect x="96.0" y="359.5" width="808.0" height="14.2" rx="3" fill="#F85149" class="bar" style="--o:904.0px;animation-delay:315ms"/>
+<path d="M105.0 362.6 L111.0 366.6 L105.0 370.6" fill="none" stroke="#0D1117" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<text class="mono" x="118.0" y="369.9" font-size="11.5" text-anchor="start" fill="#0D1117">-404.5%</text>
+<rect x="733.9" y="379.8" width="170.1" height="14.2" rx="3" fill="#58A6FF" class="bar" style="--o:904.0px;animation-delay:922.5ms"/>
+<text class="mono" x="741.9" y="390.1" font-size="11.5" text-anchor="start" fill="#0D1117">-63.2%</text>
+<rect x="96" y="435" width="10" height="10" rx="2" fill="#58A6FF"/><text class="s" x="112" y="444" font-size="11">direct (one pass)</text>
+<rect x="236" y="435" width="10" height="10" rx="2" fill="#F85149"/><text class="s" x="252" y="444" font-size="11">recursive (what the dashboard draws)</text>
+</svg>

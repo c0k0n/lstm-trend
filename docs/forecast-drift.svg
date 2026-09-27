@@ -11,7 +11,7 @@
       .edge  { stroke: #64B5F6; stroke-width: 1.4; fill: none; opacity: 0.75; }
       .fan   { fill: #64B5F6; opacity: 0.16; }
       .div   { stroke: #4FB477; stroke-width: 1.6; stroke-dasharray: 3 3; }
-    </style>
+    @media (prefers-reduced-motion: reduce){*{animation:none!important}}</style>
   </defs>
 
   <rect class="bg" x="0" y="0" width="760" height="300" rx="12"/>
